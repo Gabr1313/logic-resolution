@@ -1,5 +1,5 @@
-use resolution_logic::repl;
-use resolution_logic::Res;
+use logic_resolution::repl;
+use logic_resolution::Res;
 
 fn main() -> Res<()> {
     repl::repl()?;

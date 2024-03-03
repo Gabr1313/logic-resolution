@@ -1,6 +1,8 @@
 use std::io::{self, Write};
+use std::rc::Rc;
 
 use crate::lexer;
+use crate::rc_substr::RcSubstr;
 use crate::token;
 use crate::Res;
 
@@ -12,9 +14,7 @@ pub fn repl() -> Res<()> {
     let _ = io::stdout().flush();
     let mut lex = lexer::Lexer::new();
     for line in stdin.lines() {
-        let line = line?;
-        lex.load_bytes(line);
-
+        lex.load_bytes(RcSubstr::new(Rc::from(line?)));
         loop {
             match lex.next_tok() {
                 Ok(token::Token {

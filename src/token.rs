@@ -1,5 +1,6 @@
+use crate::rc_substr::RcSubstr;
 use core::str;
-use std::fmt;
+use std::{error::Error, fmt};
 
 pub type TokenKind = u8;
 
@@ -31,15 +32,15 @@ pub fn token_to_string(t: TokenKind) -> &'static str {
 }
 
 #[derive(PartialEq)]
-pub struct Token<'a> {
-    pub kind: TokenKind,  // @todo: not pub
-    pub literal: &'a str, // @todo: not pub
-    pub row: usize,       // @todo: not pub
-    pub col: usize,       // @todo: not pub
+pub struct Token {
+    pub kind: TokenKind,   // @todo: not pub
+    pub literal: RcSubstr, // @todo: not pub
+    pub row: usize,        // @todo: not pub
+    pub col: usize,        // @todo: not pub
 }
 
-impl<'a> Token<'a> {
-    pub fn new(kind: TokenKind, literal: &'a str, row: usize, col: usize) -> Self {
+impl Token {
+    pub fn new(kind: TokenKind, literal: RcSubstr, row: usize, col: usize) -> Self {
         Token {
             kind,
             literal,
@@ -49,16 +50,51 @@ impl<'a> Token<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Token<'a> {
+impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Token")
             .field(
                 "kind",
                 &(format!("{}->{}", self.kind, token_to_string(self.kind))),
             )
-            .field("literal", &self.literal)
+            .field("literal", &&*self.literal)
             .field("row", &self.row)
             .field("col", &self.col)
             .finish()
     }
 }
+
+pub struct InvalidTokenErr {
+    tok: RcSubstr,
+    row: usize,
+    col: usize,
+}
+
+impl<'a> Error for InvalidTokenErr {}
+
+impl<'a> InvalidTokenErr {
+    pub fn new(tok: RcSubstr, row: usize, col: usize) -> Box<Self> {
+        Box::new(InvalidTokenErr { tok, col, row })
+    }
+}
+
+impl fmt::Debug for InvalidTokenErr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Token")
+            .field("literal", &&*self.tok)
+            .field("row", &self.row)
+            .field("col", &self.col)
+            .finish()
+    }
+}
+
+impl fmt::Display for InvalidTokenErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "invalid token [{}:{}]: {}",
+            self.row, self.col, self.tok
+        )
+    }
+}
+

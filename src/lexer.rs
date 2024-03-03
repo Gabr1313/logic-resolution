@@ -1,10 +1,11 @@
-use crate::token::{self, Token};
+use crate::rc_substr::RcSubstr;
+use crate::token::{self, InvalidTokenErr, Token};
 use crate::Res;
-use std::{error::Error, fmt};
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Lexer {
-    buffer: String,
+    buffer: RcSubstr,
     pos: usize,
     row: usize,
     col: usize,
@@ -13,13 +14,13 @@ pub struct Lexer {
 impl Lexer {
     pub fn new() -> Self {
         Lexer {
-            buffer: "".to_string(),
+            buffer: RcSubstr::new(Rc::from("")),
             pos: 0,
             row: 0,
             col: 0,
         }
     }
-    pub fn load_bytes(&mut self, s: String) {
+    pub fn load_bytes(&mut self, s: RcSubstr) {
         self.buffer = s;
         self.pos = 0;
         self.row += 1;
@@ -107,7 +108,7 @@ impl Lexer {
                 token::INVALID
             }
         };
-        let s = &self.buffer[init_pos..self.pos];
+        let s = self.buffer.substr(init_pos..self.pos);
         if tok_kind == token::INVALID {
             Err(InvalidTokenErr::new(s, init_row, init_col))
         } else {
@@ -143,35 +144,13 @@ fn is_not_alphanumeric_whitespace(c: u8) -> bool {
     !is_whitespace(c) && !is_alphanumeric(c)
 }
 
-#[derive(Debug)]
-struct InvalidTokenErr {
-    tok: String,
-    row: usize,
-    col: usize,
-}
-
-impl fmt::Display for InvalidTokenErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid token [{}:{}]: {}", self.row, self.col, self.tok)
-    }
-}
-
-impl<'a> Error for InvalidTokenErr {}
-
-impl<'a> InvalidTokenErr {
-    fn new(s: &str, row: usize, col: usize) -> Box<Self> {
-        Box::new(InvalidTokenErr {
-            tok: s.to_string(),
-            col,
-            row,
-        })
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use super::{InvalidTokenErr, Lexer};
-    use crate::token::{self, Token};
+    use std::rc::Rc;
+
+    use super::Lexer;
+    use crate::rc_substr::RcSubstr;
+    use crate::token::{self, InvalidTokenErr, Token};
     use crate::Res;
 
     fn compare(lex: &mut Lexer, expected: &[Res<token::Token>]) {
@@ -198,45 +177,90 @@ is_al_num <=> Is_Al_NuM
 <<=> y
 x <y
 ^
-".to_string();
+";
         let expected: &[Res<token::Token>] = &[
-            Ok(Token::new(token::IDENT, "x", 1, 1)),
-            Ok(Token::new(token::IMPL, "=>", 1, 3)),
-            Ok(Token::new(token::IDENT, "y", 1, 6)),
-            Ok(Token::new(token::IDENT, "x", 2, 1)),
-            Ok(Token::new(token::OR, "|", 2, 2)),
-            Ok(Token::new(token::IDENT, "y", 2, 4)),
-            Ok(Token::new(token::IDENT, "x", 3, 1)),
-            Ok(Token::new(token::AND, "&", 3, 3)),
-            Ok(Token::new(token::IDENT, "y", 3, 5)),
-            Ok(Token::new(token::IDENT, "x", 4, 1)),
-            Ok(Token::new(token::EQUIV, "<=>", 4, 3)),
-            Ok(Token::new(token::IDENT, "y", 4, 6)),
-            Ok(Token::new(token::NOT, "!", 5, 1)),
-            Ok(Token::new(token::IDENT, "x", 5, 2)),
-            Ok(Token::new(token::IDENT, "x", 6, 1)),
-            Ok(Token::new(token::AND, "&", 6, 2)),
-            Ok(Token::new(token::IDENT, "y", 6, 3)),
-            Ok(Token::new(token::PAREN_L, "(", 7, 1)),
-            Ok(Token::new(token::IDENT, "x", 7, 2)),
-            Ok(Token::new(token::OR, "|", 7, 4)),
-            Ok(Token::new(token::IDENT, "y", 7, 6)),
-            Ok(Token::new(token::PAREN_R, ")", 7, 7)),
-            Ok(Token::new(token::AND, "&", 7, 9)),
-            Ok(Token::new(token::IDENT, "z", 7, 11)),
-            Ok(Token::new(token::IDENT, "is_al_num", 8, 1)),
-            Ok(Token::new(token::EQUIV, "<=>", 8, 11)),
-            Ok(Token::new(token::IDENT, "Is_Al_NuM", 8, 15)),
-            Err(InvalidTokenErr::new("<<=>", 9, 1)),
-            Ok(Token::new(token::IDENT, "y", 9, 6)),
-            Ok(Token::new(token::IDENT, "x", 10, 1)),
-            Err(InvalidTokenErr::new("<", 10, 3)),
-            Ok(Token::new(token::IDENT, "y", 10, 4)),
-            Err(InvalidTokenErr::new("^", 11, 1)),
-            Ok(Token::new(token::EOF, "", 12, 0)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 1, 1)),
+            Ok(Token::new(token::IMPL, RcSubstr::new(Rc::from("=>")), 1, 3)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 1, 6)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 2, 1)),
+            Ok(Token::new(token::OR, RcSubstr::new(Rc::from("|")), 2, 2)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 2, 4)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 3, 1)),
+            Ok(Token::new(token::AND, RcSubstr::new(Rc::from("&")), 3, 3)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 3, 5)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 4, 1)),
+            Ok(Token::new(
+                token::EQUIV,
+                RcSubstr::new(Rc::from("<=>")),
+                4,
+                3,
+            )),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 4, 6)),
+            Ok(Token::new(token::NOT, RcSubstr::new(Rc::from("!")), 5, 1)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 5, 2)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 6, 1)),
+            Ok(Token::new(token::AND, RcSubstr::new(Rc::from("&")), 6, 2)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 6, 3)),
+            Ok(Token::new(
+                token::PAREN_L,
+                RcSubstr::new(Rc::from("(")),
+                7,
+                1,
+            )),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 7, 2)),
+            Ok(Token::new(token::OR, RcSubstr::new(Rc::from("|")), 7, 4)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 7, 6)),
+            Ok(Token::new(
+                token::PAREN_R,
+                RcSubstr::new(Rc::from(")")),
+                7,
+                7,
+            )),
+            Ok(Token::new(token::AND, RcSubstr::new(Rc::from("&")), 7, 9)),
+            Ok(Token::new(
+                token::IDENT,
+                RcSubstr::new(Rc::from("z")),
+                7,
+                11,
+            )),
+            Ok(Token::new(
+                token::IDENT,
+                RcSubstr::new(Rc::from("is_al_num")),
+                8,
+                1,
+            )),
+            Ok(Token::new(
+                token::EQUIV,
+                RcSubstr::new(Rc::from("<=>")),
+                8,
+                11,
+            )),
+            Ok(Token::new(
+                token::IDENT,
+                RcSubstr::new(Rc::from("Is_Al_NuM")),
+                8,
+                15,
+            )),
+            Err(InvalidTokenErr::new(RcSubstr::new(Rc::from("<<=>")), 9, 1)),
+            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 9, 6)),
+            Ok(Token::new(
+                token::IDENT,
+                RcSubstr::new(Rc::from("x")),
+                10,
+                1,
+            )),
+            Err(InvalidTokenErr::new(RcSubstr::new(Rc::from("<")), 10, 3)),
+            Ok(Token::new(
+                token::IDENT,
+                RcSubstr::new(Rc::from("y")),
+                10,
+                4,
+            )),
+            Err(InvalidTokenErr::new(RcSubstr::new(Rc::from("^")), 11, 1)),
+            Ok(Token::new(token::EOF, RcSubstr::new(Rc::from("")), 12, 0)),
         ];
         let mut lex = Lexer::new();
-        lex.load_bytes(buffer);
+        lex.load_bytes(RcSubstr::new(Rc::from(buffer)));
         compare(&mut lex, expected);
     }
 }
