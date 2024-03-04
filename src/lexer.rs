@@ -1,11 +1,9 @@
-use crate::rc_substr::RcSubstr;
-use crate::token::{self, InvalidTokenErr, Token};
+use crate::token;
 use crate::Res;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Lexer {
-    buffer: RcSubstr,
+    buffer: String,
     pos: usize,
     row: usize,
     col: usize,
@@ -14,14 +12,14 @@ pub struct Lexer {
 impl Lexer {
     pub fn new() -> Self {
         Lexer {
-            buffer: RcSubstr::new(Rc::from("")),
+            buffer: "".to_string(),
             pos: 0,
             row: 0,
             col: 0,
         }
     }
-    pub fn load_bytes(&mut self, s: RcSubstr) {
-        self.buffer = s;
+    pub fn load_bytes(&mut self, buffer: String) {
+        self.buffer = buffer;
         self.pos = 0;
         self.row += 1;
         self.col = 1;
@@ -48,71 +46,71 @@ impl Lexer {
     }
 
     /// self.pos -> first unread char
-    pub fn next_tok(&mut self) -> Res<Token> {
+    pub fn next_tok(&mut self) -> Res<token::Token> {
         self.skip_while(is_whitespace);
         let (init_pos, init_col, init_row) = (self.pos, self.col, self.row);
         let tok_kind = match self.ch() {
-            None => token::EOF,
+            None => token::Kind::Eof,
             Some(b'(') => {
                 self.next_ch();
-                token::PAREN_L
+                token::Kind::ParenL
             }
             Some(b')') => {
                 self.next_ch();
-                token::PAREN_R
+                token::Kind::ParenR
             }
             Some(b'&') => {
                 self.next_ch();
-                token::AND
+                token::Kind::And
             }
             Some(b'|') => {
                 self.next_ch();
-                token::OR
+                token::Kind::Or
             }
             Some(b'!') => {
                 self.next_ch();
-                token::NOT
+                token::Kind::Not
             }
             Some(b'=') => match self.next_ch() {
                 Some(b'>') => {
                     self.next_ch();
-                    token::IMPL
+                    token::Kind::Impl
                 }
                 _ => {
                     self.skip_while(is_not_alphanumeric_whitespace);
-                    token::INVALID
+                    token::Kind::Invalid
                 }
             },
             Some(b'<') => match self.next_ch() {
                 Some(b'=') => match self.next_ch() {
                     Some(b'>') => {
                         self.next_ch();
-                        token::EQUIV
+                        token::Kind::Equiv
                     }
                     _ => {
                         self.skip_while(is_not_alphanumeric_whitespace);
-                        token::INVALID
+                        token::Kind::Invalid
                     }
                 },
                 _ => {
                     self.skip_while(is_not_alphanumeric_whitespace);
-                    token::INVALID
+                    token::Kind::Invalid
                 }
             },
             Some(b'a'..=b'z' | b'A'..=b'Z') => {
                 self.skip_while(is_alphanumeric);
-                token::IDENT
+                token::Kind::Ident
             }
             _ => {
                 self.skip_while(is_not_alphanumeric_whitespace);
-                token::INVALID
+                token::Kind::Invalid
             }
         };
-        let s = self.buffer.substr(init_pos..self.pos);
-        if tok_kind == token::INVALID {
-            Err(InvalidTokenErr::new(s, init_row, init_col))
+        let s = self.buffer[init_pos..self.pos].to_string();
+        if tok_kind == token::Kind::Invalid {
+            Err(token::InvalidTokenErr::new(s, init_row, init_col))
         } else {
-            Ok(Token::new(tok_kind, s, init_row, init_col))
+            Ok(token::Token::new(tok_kind, s, init_row, init_col))
         }
     }
 
@@ -146,11 +144,8 @@ fn is_not_alphanumeric_whitespace(c: u8) -> bool {
 
 #[cfg(test)]
 mod test {
-    use std::rc::Rc;
-
     use super::Lexer;
-    use crate::rc_substr::RcSubstr;
-    use crate::token::{self, InvalidTokenErr, Token};
+    use crate::token;
     use crate::Res;
 
     fn compare(lex: &mut Lexer, expected: &[Res<token::Token>]) {
@@ -179,88 +174,88 @@ x <y
 ^
 ";
         let expected: &[Res<token::Token>] = &[
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 1, 1)),
-            Ok(Token::new(token::IMPL, RcSubstr::new(Rc::from("=>")), 1, 3)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 1, 6)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 2, 1)),
-            Ok(Token::new(token::OR, RcSubstr::new(Rc::from("|")), 2, 2)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 2, 4)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 3, 1)),
-            Ok(Token::new(token::AND, RcSubstr::new(Rc::from("&")), 3, 3)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 3, 5)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 4, 1)),
-            Ok(Token::new(
-                token::EQUIV,
-                RcSubstr::new(Rc::from("<=>")),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 1, 1)),
+            Ok(token::Token::new(token::Kind::Impl, "=>".to_string(), 1, 3)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 1, 6)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 2, 1)),
+            Ok(token::Token::new(token::Kind::Or, "|".to_string(), 2, 2)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 2, 4)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 3, 1)),
+            Ok(token::Token::new(token::Kind::And, "&".to_string(), 3, 3)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 3, 5)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 4, 1)),
+            Ok(token::Token::new(
+                token::Kind::Equiv,
+                "<=>".to_string(),
                 4,
                 3,
             )),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 4, 6)),
-            Ok(Token::new(token::NOT, RcSubstr::new(Rc::from("!")), 5, 1)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 5, 2)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 6, 1)),
-            Ok(Token::new(token::AND, RcSubstr::new(Rc::from("&")), 6, 2)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 6, 3)),
-            Ok(Token::new(
-                token::PAREN_L,
-                RcSubstr::new(Rc::from("(")),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 4, 6)),
+            Ok(token::Token::new(token::Kind::Not, "!".to_string(), 5, 1)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 5, 2)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 6, 1)),
+            Ok(token::Token::new(token::Kind::And, "&".to_string(), 6, 2)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 6, 3)),
+            Ok(token::Token::new(
+                token::Kind::ParenL,
+                "(".to_string(),
                 7,
                 1,
             )),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("x")), 7, 2)),
-            Ok(Token::new(token::OR, RcSubstr::new(Rc::from("|")), 7, 4)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 7, 6)),
-            Ok(Token::new(
-                token::PAREN_R,
-                RcSubstr::new(Rc::from(")")),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 7, 2)),
+            Ok(token::Token::new(token::Kind::Or, "|".to_string(), 7, 4)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 7, 6)),
+            Ok(token::Token::new(
+                token::Kind::ParenR,
+                ")".to_string(),
                 7,
                 7,
             )),
-            Ok(Token::new(token::AND, RcSubstr::new(Rc::from("&")), 7, 9)),
-            Ok(Token::new(
-                token::IDENT,
-                RcSubstr::new(Rc::from("z")),
+            Ok(token::Token::new(token::Kind::And, "&".to_string(), 7, 9)),
+            Ok(token::Token::new(
+                token::Kind::Ident,
+                "z".to_string(),
                 7,
                 11,
             )),
-            Ok(Token::new(
-                token::IDENT,
-                RcSubstr::new(Rc::from("is_al_num")),
+            Ok(token::Token::new(
+                token::Kind::Ident,
+                "is_al_num".to_string(),
                 8,
                 1,
             )),
-            Ok(Token::new(
-                token::EQUIV,
-                RcSubstr::new(Rc::from("<=>")),
+            Ok(token::Token::new(
+                token::Kind::Equiv,
+                "<=>".to_string(),
                 8,
                 11,
             )),
-            Ok(Token::new(
-                token::IDENT,
-                RcSubstr::new(Rc::from("Is_Al_NuM")),
+            Ok(token::Token::new(
+                token::Kind::Ident,
+                "Is_Al_NuM".to_string(),
                 8,
                 15,
             )),
-            Err(InvalidTokenErr::new(RcSubstr::new(Rc::from("<<=>")), 9, 1)),
-            Ok(Token::new(token::IDENT, RcSubstr::new(Rc::from("y")), 9, 6)),
-            Ok(Token::new(
-                token::IDENT,
-                RcSubstr::new(Rc::from("x")),
+            Err(token::InvalidTokenErr::new("<<=>".to_string(), 9, 1)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 9, 6)),
+            Ok(token::Token::new(
+                token::Kind::Ident,
+                "x".to_string(),
                 10,
                 1,
             )),
-            Err(InvalidTokenErr::new(RcSubstr::new(Rc::from("<")), 10, 3)),
-            Ok(Token::new(
-                token::IDENT,
-                RcSubstr::new(Rc::from("y")),
+            Err(token::InvalidTokenErr::new("<".to_string(), 10, 3)),
+            Ok(token::Token::new(
+                token::Kind::Ident,
+                "y".to_string(),
                 10,
                 4,
             )),
-            Err(InvalidTokenErr::new(RcSubstr::new(Rc::from("^")), 11, 1)),
-            Ok(Token::new(token::EOF, RcSubstr::new(Rc::from("")), 12, 0)),
+            Err(token::InvalidTokenErr::new("^".to_string(), 11, 1)),
+            Ok(token::Token::new(token::Kind::Eof, "".to_string(), 12, 0)),
         ];
         let mut lex = Lexer::new();
-        lex.load_bytes(RcSubstr::new(Rc::from(buffer)));
+        lex.load_bytes(buffer.to_string());
         compare(&mut lex, expected);
     }
 }
