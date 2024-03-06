@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 
 use crate::lexer;
+use crate::parser;
 use crate::token;
 use crate::Res;
 
@@ -8,18 +9,16 @@ const PROMPT: &str = ">>";
 
 pub fn repl() -> Res<()> {
     let stdin = io::stdin();
-    let mut lex = lexer::Lexer::new();
+    let lex = lexer::Lexer::new();
+    let mut pars = parser::Parser::new(lex)?;
     print!("{} ", PROMPT);
     let _ = io::stdout().flush();
     for line in stdin.lines() {
-        lex.load_bytes(line?);
-        loop {
-            match lex.next_tok() {
-                Ok(token::Token {
-                    kind: token::Kind::Eof, ..
-                }) => break,
-                Ok(tok) => println!("{:?}", tok),
-                Err(err) => println!("{:?}", err),
+        pars.load_bytes(line?)?;
+        while pars.curr_tok().kind != token::Kind::Eof {
+            match pars.parse_statement() {
+                Ok(parsed) => println!("{}", parsed),
+                Err(err) => println!("{}", err),
             }
         }
 

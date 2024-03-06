@@ -31,18 +31,17 @@ impl Lexer {
             None
         }
     }
-    fn next_ch(&mut self) -> Option<u8> {
-        self.pos += 1;
-        let c = self.ch();
-        if let Some(c) = c {
+    fn skip_ch(&mut self) -> Option<u8> {
+        if let Some(c) = self.ch() {
             if matches!(c, b'\n' | b'\x0C' | b'\r') {
-                self.col = 0;
+                self.col = 1;
                 self.row += 1;
             } else {
                 self.col += 1;
             }
         }
-        c
+        self.pos += 1;
+        self.ch()
     }
 
     /// self.pos -> first unread char
@@ -51,40 +50,44 @@ impl Lexer {
         let (init_pos, init_col, init_row) = (self.pos, self.col, self.row);
         let tok_kind = match self.ch() {
             None => token::Kind::Eof,
+            Some(b';') => {
+                self.skip_ch();
+                token::Kind::SemiColon
+            }
             Some(b'(') => {
-                self.next_ch();
+                self.skip_ch();
                 token::Kind::ParenL
             }
             Some(b')') => {
-                self.next_ch();
+                self.skip_ch();
                 token::Kind::ParenR
             }
             Some(b'&') => {
-                self.next_ch();
+                self.skip_ch();
                 token::Kind::And
             }
             Some(b'|') => {
-                self.next_ch();
+                self.skip_ch();
                 token::Kind::Or
             }
             Some(b'!') => {
-                self.next_ch();
+                self.skip_ch();
                 token::Kind::Not
             }
-            Some(b'=') => match self.next_ch() {
+            Some(b'=') => match self.skip_ch() {
                 Some(b'>') => {
-                    self.next_ch();
-                    token::Kind::Impl
+                    self.skip_ch();
+                    token::Kind::Implies
                 }
                 _ => {
                     self.skip_while(is_not_alphanumeric_whitespace);
                     token::Kind::Invalid
                 }
             },
-            Some(b'<') => match self.next_ch() {
-                Some(b'=') => match self.next_ch() {
+            Some(b'<') => match self.skip_ch() {
+                Some(b'=') => match self.skip_ch() {
                     Some(b'>') => {
-                        self.next_ch();
+                        self.skip_ch();
                         token::Kind::Equiv
                     }
                     _ => {
@@ -125,7 +128,7 @@ impl Lexer {
             if !f(c) {
                 return;
             }
-            self.next_ch();
+            self.skip_ch();
         }
     }
 }
@@ -160,12 +163,13 @@ mod test {
     }
 
     #[test]
-    fn test_tokens_and_errors() {
-        let buffer = "x => y
-x| y
+    fn test_lexer() {
+        let buffer = "
+x => y
+x| y;
 x & y
-x <=>y
-!x
+x <=>y   ;
+!x ;
 x&y
 (x | y) & z
 is_al_num <=> Is_Al_NuM
@@ -174,85 +178,108 @@ x <y
 ^
 ";
         let expected: &[Res<token::Token>] = &[
-            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 1, 1)),
-            Ok(token::Token::new(token::Kind::Impl, "=>".to_string(), 1, 3)),
-            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 1, 6)),
             Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 2, 1)),
-            Ok(token::Token::new(token::Kind::Or, "|".to_string(), 2, 2)),
-            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 2, 4)),
+            Ok(token::Token::new(
+                token::Kind::Implies,
+                "=>".to_string(),
+                2,
+                3,
+            )),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 2, 6)),
             Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 3, 1)),
-            Ok(token::Token::new(token::Kind::And, "&".to_string(), 3, 3)),
-            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 3, 5)),
+            Ok(token::Token::new(token::Kind::Or, "|".to_string(), 3, 2)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 3, 4)),
+            Ok(token::Token::new(
+                token::Kind::SemiColon,
+                ";".to_string(),
+                3,
+                5,
+            )),
             Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 4, 1)),
+            Ok(token::Token::new(token::Kind::And, "&".to_string(), 4, 3)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 4, 5)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 5, 1)),
             Ok(token::Token::new(
                 token::Kind::Equiv,
                 "<=>".to_string(),
-                4,
+                5,
                 3,
             )),
-            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 4, 6)),
-            Ok(token::Token::new(token::Kind::Not, "!".to_string(), 5, 1)),
-            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 5, 2)),
-            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 6, 1)),
-            Ok(token::Token::new(token::Kind::And, "&".to_string(), 6, 2)),
-            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 6, 3)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 5, 6)),
+            Ok(token::Token::new(
+                token::Kind::SemiColon,
+                ";".to_string(),
+                5,
+                10,
+            )),
+            Ok(token::Token::new(token::Kind::Not, "!".to_string(), 6, 1)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 6, 2)),
+            Ok(token::Token::new(
+                token::Kind::SemiColon,
+                ";".to_string(),
+                6,
+                4,
+            )),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 7, 1)),
+            Ok(token::Token::new(token::Kind::And, "&".to_string(), 7, 2)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 7, 3)),
             Ok(token::Token::new(
                 token::Kind::ParenL,
                 "(".to_string(),
-                7,
+                8,
                 1,
             )),
-            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 7, 2)),
-            Ok(token::Token::new(token::Kind::Or, "|".to_string(), 7, 4)),
-            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 7, 6)),
+            Ok(token::Token::new(token::Kind::Ident, "x".to_string(), 8, 2)),
+            Ok(token::Token::new(token::Kind::Or, "|".to_string(), 8, 4)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 8, 6)),
             Ok(token::Token::new(
                 token::Kind::ParenR,
                 ")".to_string(),
-                7,
+                8,
                 7,
             )),
-            Ok(token::Token::new(token::Kind::And, "&".to_string(), 7, 9)),
+            Ok(token::Token::new(token::Kind::And, "&".to_string(), 8, 9)),
             Ok(token::Token::new(
                 token::Kind::Ident,
                 "z".to_string(),
-                7,
+                8,
                 11,
             )),
             Ok(token::Token::new(
                 token::Kind::Ident,
                 "is_al_num".to_string(),
-                8,
+                9,
                 1,
             )),
             Ok(token::Token::new(
                 token::Kind::Equiv,
                 "<=>".to_string(),
-                8,
+                9,
                 11,
             )),
             Ok(token::Token::new(
                 token::Kind::Ident,
                 "Is_Al_NuM".to_string(),
-                8,
+                9,
                 15,
             )),
-            Err(token::InvalidTokenErr::new("<<=>".to_string(), 9, 1)),
-            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 9, 6)),
+            Err(token::InvalidTokenErr::new("<<=>".to_string(), 10, 1)),
+            Ok(token::Token::new(token::Kind::Ident, "y".to_string(), 10, 6)),
             Ok(token::Token::new(
                 token::Kind::Ident,
                 "x".to_string(),
-                10,
+                11,
                 1,
             )),
-            Err(token::InvalidTokenErr::new("<".to_string(), 10, 3)),
+            Err(token::InvalidTokenErr::new("<".to_string(), 11, 3)),
             Ok(token::Token::new(
                 token::Kind::Ident,
                 "y".to_string(),
-                10,
+                11,
                 4,
             )),
-            Err(token::InvalidTokenErr::new("^".to_string(), 11, 1)),
-            Ok(token::Token::new(token::Kind::Eof, "".to_string(), 12, 0)),
+            Err(token::InvalidTokenErr::new("^".to_string(), 12, 1)),
+            Ok(token::Token::new(token::Kind::Eof, "".to_string(), 13, 1)),
         ];
         let mut lex = Lexer::new();
         lex.load_bytes(buffer.to_string());
