@@ -4,7 +4,7 @@ use std::{error::Error, fmt};
 pub enum Kind {
     Invalid,
     Eof,
-    Ident,
+    Identifier,
     ParenL,
     ParenR,
     And,
@@ -15,12 +15,27 @@ pub enum Kind {
     SemiColon,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+impl Kind {
+    pub fn precedence(&self) -> usize {
+        // should be >= 1 because 0 is never read by the parser (default value)
+        match self {
+            Kind::Not => 7,
+            Kind::And => 6,
+            Kind::Or => 5,
+            Kind::Implies => 4,
+            Kind::Equiv => 3,
+            Kind::SemiColon | Kind::Identifier | Kind::ParenL | Kind::ParenR => 2,
+            Kind::Invalid | Kind::Eof => 1,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
-    pub kind: Kind,      // @todo: not pub
-    pub literal: String, // @todo: not pub
-    pub row: usize,      // @todo: not pub
-    pub col: usize,      // @todo: not pub
+    kind: Kind,
+    literal: String, // @think: would it be better to have an ID with and HashMap instead?
+    row: usize,
+    col: usize,
 }
 
 impl fmt::Display for Token {
@@ -38,19 +53,20 @@ impl Token {
             col,
         }
     }
+    pub fn kind(&self) -> Kind {
+        self.kind
+    }
+    pub fn literal(&self) -> &str {
+        &self.literal
+    }
+    pub fn row(&self) -> usize {
+        self.row
+    }
+    pub fn col(&self) -> usize {
+        self.col
+    }
     pub fn precedence(&self) -> usize {
-        // should be >= 1 because 0 is never taken
-        match self.kind {
-            Kind::Not => 9,
-            Kind::And => 8,
-            Kind::Or => 7,
-            Kind::Implies => 6,
-            Kind::Equiv => 5,
-            Kind::SemiColon => 4,
-            Kind::Ident => 3,
-            Kind::ParenL | Kind::ParenR => 2,
-            Kind::Invalid | Kind::Eof => 1,
-        }
+        self.kind.precedence()
     }
 }
 
@@ -61,9 +77,9 @@ pub struct InvalidTokenErr {
     col: usize,
 }
 
-impl<'a> Error for InvalidTokenErr {}
+impl Error for InvalidTokenErr {}
 
-impl<'a> InvalidTokenErr {
+impl InvalidTokenErr {
     pub fn new(tok: String, row: usize, col: usize) -> Box<Self> {
         Box::new(InvalidTokenErr { tok, col, row })
     }

@@ -18,15 +18,11 @@ impl Parser {
             curr_tok: None,
             peek_tok: None,
         };
-        p.curr_tok = p.peek_tok.take();
-        p.peek_tok = Some(p.lex.next_tok()?);
-        p.curr_tok = p.peek_tok.take();
-        p.peek_tok = Some(p.lex.next_tok()?);
+        p.init()?;
         Ok(p)
     }
 
-    pub fn load_bytes(&mut self, buffer: String) -> Res<()> {
-        self.lex.load_bytes(buffer);
+    fn init(&mut self) -> Res<()> {
         self.curr_tok = self.peek_tok.take();
         self.peek_tok = Some(self.lex.next_tok()?);
         self.curr_tok = self.peek_tok.take();
@@ -34,7 +30,12 @@ impl Parser {
         Ok(())
     }
 
-    pub fn curr_tok(&self) -> &token::Token {
+    pub fn load_bytes(&mut self, buffer: String) -> Res<()> {
+        self.lex.load_bytes(buffer);
+        self.init()
+    }
+
+    fn curr_tok(&self) -> &token::Token {
         // should never panic because None is only the initial value
         self.curr_tok.as_ref().unwrap()
     }
@@ -48,49 +49,59 @@ impl Parser {
         Ok(tok)
     }
 
-    pub fn parse_statement(&mut self) -> Res<ast::Formula> {
-        self.recursive_pratt(0)
+    /// it skips only the first token if it is invalid
+    /// it does not skip what is there instead of `;`
+    pub fn parse_formula(&mut self) -> Res<ast::Formula> {
+        if self.curr_tok().kind() == token::Kind::Eof {
+            return Ok(ast::Formula::Eof);
+        }
+        let stat = self.recursive_pratt(0)?;
+        if self.curr_tok().kind() != token::Kind::SemiColon {
+            return Err(ParseErr::new(
+                self.curr_tok().clone(),
+                format!("expected {:?}", token::Kind::SemiColon),
+            ));
+        }
+        self.skip_tok()?;
+        Ok(stat)
     }
 
+    /// it does skip the first token if it is invalid
     fn recursive_pratt(&mut self, precedence: usize) -> Res<ast::Formula> {
-        // pre: unary
-        let mut formula = match self.curr_tok().kind {
+        // pre: unary operator
+        let mut formula = match self.curr_tok().kind() {
             token::Kind::Not => self.parse_unary(),
             token::Kind::ParenL => self.parse_paren(),
-            token::Kind::Ident => self.parse_leaf(),
+            token::Kind::Identifier => self.parse_leaf(),
             _ => {
                 return Err(ParseErr::new(
                     self.skip_tok()?,
-                    "expected `identifier` or `unary operator`",
+                    "not the beginning of a formula".to_string(),
                 ))
             }
         };
 
+        // post: binary operator
         while precedence < self.curr_tok().precedence() {
-            match self.curr_tok().kind {
+            match self.curr_tok().kind() {
                 token::Kind::And | token::Kind::Or | token::Kind::Implies | token::Kind::Equiv => {
                     formula = self.parse_binary(formula?)
                 }
-                token::Kind::SemiColon => {
-                    self.skip_tok()?;
-                    break;
-                }
-                _ => {
-                    return Err(ParseErr::new(
-                        self.skip_tok()?,
-                        "expected `;` or `binary operator`",
-                    ))
-                }
+                _ => break,
             }
         }
         formula
     }
 
+    /// it does not skip what is there instead of `)`
     fn parse_paren(&mut self) -> Res<ast::Formula> {
         let paren_l = self.skip_tok()?;
         let f = self.recursive_pratt(paren_l.precedence())?;
-        if self.curr_tok().kind != token::Kind::ParenR {
-            todo!("Error: expected found )")
+        if self.curr_tok().kind() != token::Kind::ParenR {
+            return Err(ParseErr::new(
+                self.curr_tok().clone(),
+                format!("expected {:?}", token::Kind::ParenR),
+            ));
         }
         self.skip_tok()?;
         Ok(f)
@@ -118,25 +129,29 @@ impl Parser {
 }
 
 #[derive(Debug)]
-pub struct ParseErr<'a> {
+pub struct ParseErr {
     tok: token::Token,
-    message: &'a str,
+    message: String,
 }
 
-impl<'a> Error for ParseErr<'a> {}
+impl Error for ParseErr {}
 
-impl<'a> ParseErr<'a> {
-    pub fn new(tok: token::Token, message: &'a str) -> Box<Self> {
+impl ParseErr {
+    pub fn new(tok: token::Token, message: String) -> Box<Self> {
         Box::new(ParseErr { tok, message })
     }
 }
 
-impl<'a> fmt::Display for ParseErr<'a> {
+impl fmt::Display for ParseErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "Parse error [{}:{}]: got=`{}` ({:?}): {}",
-            self.tok.row, self.tok.col, self.tok.literal, self.tok.kind, self.message
+            self.tok.row(),
+            self.tok.col(),
+            self.tok.literal(),
+            self.tok.kind(),
+            self.message
         )
     }
 }
@@ -149,10 +164,10 @@ mod test {
 
     fn compare(pars: &mut Parser, expected: &[&str]) {
         for &exp in expected {
-            let l = format!(
-                "{}",
-                pars.parse_statement().unwrap_or_else(|e| panic!("{e}"))
-            );
+            let l = match pars.parse_formula() {
+                Ok(s) => format!("{s}"),
+                Err(s) => format!("{s}"),
+            };
             if exp != l {
                 panic!("expected=`{exp}`\ngot     =`{l}`")
             }
@@ -162,37 +177,51 @@ mod test {
     #[test]
     fn test_parser() {
         let buffer = "
+x;
 !x;
 x => y;
 x | y;
+x | y | z;
+((x | y) | z);
+(x | (y | z));
 x & y;
 x <=> y;
 ((x | y)) & z;
 x <=> y => z | w & !v;
 !x & y | z => w <=> v;
 !x | (y | z) <=> !w => v & b;
+=>
+(x | y;
 ";
         // i suppose that the lexer test passes
         let mut lex_test = lexer::Lexer::new();
         lex_test.load_bytes(buffer.to_string());
         let mut tokens = Vec::new();
         while let Ok(t) = lex_test.next_tok() {
-            if t.kind == token::Kind::Eof {
+            if t.kind() == token::Kind::Eof {
                 break;
             }
             tokens.push(Some(t));
         }
 
         let expected: &[&str] = &[
+            "x",
             "(!x)",
             "(x => y)",
             "(x | y)",
+            "((x | y) | z)",
+            "((x | y) | z)",
+            "(x | (y | z))",
             "(x & y)",
             "(x <=> y)",
             "((x | y) & z)",
             "(x <=> (y => (z | (w & (!v)))))",
             "(((((!x) & y) | z) => w) <=> v)",
             "(((!x) | (y | z)) <=> ((!w) => (v & b)))",
+            "Parse error [15:1]: got=`=>` (Implies): not the beginning of a formula",
+            "Parse error [16:7]: got=`;` (SemiColon): expected ParenR",
+            "Parse error [16:7]: got=`;` (SemiColon): not the beginning of a formula",
+            "EOF",
         ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());

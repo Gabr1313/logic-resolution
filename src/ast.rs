@@ -25,6 +25,7 @@ pub enum Formula {
     Unary(Unary),
     Binary(Binary),
     Leaf(Leaf),
+    Eof,
 }
 
 /* pub struct FormulaSet {
@@ -59,6 +60,7 @@ impl fmt::Display for Formula {
                 Formula::Leaf(l) => format!("{}", l.ident),
                 Formula::Unary(u) => format!("({}{})", u.operator, u.right),
                 Formula::Binary(b) => format!("({} {} {})", b.left, b.operator, b.right),
+                Formula::Eof => format!("EOF"),
             }
         )
     }
