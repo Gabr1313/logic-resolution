@@ -84,13 +84,14 @@ impl Formula {
         }
     }
 
+    // TODO: find a better name for this function
     /// push `!` inside, and substitue `=>` and`<=>`
-    pub fn simplify(self) -> Res<Self> {
+    fn pre_distribute(self) -> Res<Self> {
         Ok(match self {
             Formula::Unary(x) => {
                 let (operator, right) = x.destroy();
                 match operator {
-                    token::Kind::Not => right.negate_and_simplify()?,
+                    token::Kind::Not => right.negate_and_pre_distribute()?,
                     _ => {
                         return Err(InternalErrorTok::new(
                             operator,
@@ -102,28 +103,32 @@ impl Formula {
             Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 match operator {
-                    token::Kind::And => {
-                        Self::new_binary(left.simplify()?, token::Kind::And, right.simplify()?)
-                    }
-                    token::Kind::Or => {
-                        Self::new_binary(left.simplify()?, token::Kind::Or, right.simplify()?)
-                    }
-                    token::Kind::Implies => Self::new_binary(
-                        left.negate_and_simplify()?,
+                    token::Kind::And => Self::new_binary(
+                        left.pre_distribute()?,
+                        token::Kind::And,
+                        right.pre_distribute()?,
+                    ),
+                    token::Kind::Or => Self::new_binary(
+                        left.pre_distribute()?,
                         token::Kind::Or,
-                        right.simplify()?,
+                        right.pre_distribute()?,
+                    ),
+                    token::Kind::Implies => Self::new_binary(
+                        left.negate_and_pre_distribute()?,
+                        token::Kind::Or,
+                        right.pre_distribute()?,
                     ),
                     token::Kind::Equiv => Self::new_binary(
                         Self::new_binary(
-                            left.clone().simplify()?,
+                            left.clone().pre_distribute()?,
                             token::Kind::And,
-                            right.clone().simplify()?,
+                            right.clone().pre_distribute()?,
                         ),
                         token::Kind::Or,
                         Self::new_binary(
-                            left.negate_and_simplify()?,
+                            left.negate_and_pre_distribute()?,
                             token::Kind::And,
-                            right.negate_and_simplify()?,
+                            right.negate_and_pre_distribute()?,
                         ),
                     ),
                     _ => {
@@ -144,7 +149,8 @@ impl Formula {
         })
     }
 
-    pub fn negate_and_simplify(self) -> Res<Self> {
+    // TODO: find a better name for this function
+    pub fn negate_and_pre_distribute(self) -> Res<Self> {
         Ok(match self {
             Formula::Unary(x) => {
                 let (operator, right) = x.destroy();
@@ -162,24 +168,24 @@ impl Formula {
                 let (left, operator, right) = x.destroy();
                 match operator {
                     token::Kind::And => Self::new_binary(
-                        left.negate_and_simplify()?,
+                        left.negate_and_pre_distribute()?,
                         token::Kind::Or,
-                        right.negate_and_simplify()?,
+                        right.negate_and_pre_distribute()?,
                     ),
                     token::Kind::Or => Self::new_binary(
-                        left.negate_and_simplify()?,
+                        left.negate_and_pre_distribute()?,
                         token::Kind::And,
-                        right.negate_and_simplify()?,
+                        right.negate_and_pre_distribute()?,
                     ),
                     token::Kind::Implies => Self::new_binary(
-                        left.simplify()?,
+                        left.pre_distribute()?,
                         token::Kind::And,
-                        right.negate_and_simplify()?,
+                        right.negate_and_pre_distribute()?,
                     ),
                     token::Kind::Equiv => Self::new_binary(
-                        left.simplify()?,
+                        left.pre_distribute()?,
                         token::Kind::Equiv,
-                        right.negate_and_simplify()?,
+                        right.negate_and_pre_distribute()?,
                     ),
                     _ => {
                         return Err(InternalErrorTok::new(
@@ -200,8 +206,9 @@ impl Formula {
     }
 
     pub fn distribute(self) -> Res<Self> {
-        Ok(match self {
-            Formula::Unary(_) => self, // should be only before a leaf
+        let formula = self.pre_distribute()?;
+        Ok(match formula {
+            Formula::Unary(_) => formula, // should be only before a leaf
             Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 let left = left.distribute()?;
@@ -231,7 +238,7 @@ impl Formula {
                     }
                 }
             }
-            Formula::Leaf(_) => self,
+            Formula::Leaf(_) => formula,
             Formula::Eof => {
                 return Err(InternalErrorTok::new(
                     token::Kind::Eof,
@@ -241,10 +248,11 @@ impl Formula {
         })
     }
 
-    /// distribute recursively
-    ///     |              &
-    ///   &   c         |     |
-    ///  a b           a c   b c
+    /// assert left.is_and()
+    // distribute recursively
+    //     |              &
+    //   &   c         |     |
+    //  a b           a c   b c
     fn distribute_left(left: Formula, right: Formula) -> Res<Self> {
         Ok(if let Self::Binary(l) = left {
             if l.operator == token::Kind::And {
@@ -263,6 +271,7 @@ impl Formula {
         })
     }
 
+    /// assert right.is_and()
     /// distribute recursively
     ///     |              &
     ///  c     &        |      |
@@ -327,10 +336,10 @@ impl fmt::Display for InternalErrorTok {
 mod test {
     use crate::{lexer, parser::Parser, token};
 
-    fn compare_simplify(pars: &mut Parser, expected: &[&str]) {
+    fn compare_pre_distribute(pars: &mut Parser, expected: &[&str]) {
         for &exp in expected {
             // i suppose that the parser tests pass
-            let l = match pars.parse_formula().unwrap().simplify() {
+            let l = match pars.parse_formula().unwrap().pre_distribute() {
                 Ok(s) => format!("{s}"),
                 Err(s) => format!("{s}"),
             };
@@ -341,7 +350,7 @@ mod test {
     }
 
     #[test]
-    fn test_simplify() {
+    fn test_pre_distribute() {
         let buffer = "
 !x;
 x & y;
@@ -376,19 +385,13 @@ x | y => z;
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
         let mut parser = Parser::new(lex).unwrap();
-        compare_simplify(&mut parser, expected);
+        compare_pre_distribute(&mut parser, expected);
     }
 
     fn compare_distribute(pars: &mut Parser, expected: &[&str]) {
         for &exp in expected {
-            // i suppose that the parser and the simplify tests pass
-            let l = match pars
-                .parse_formula()
-                .unwrap()
-                .simplify()
-                .unwrap()
-                .distribute()
-            {
+            // i suppose that the parser tests pass
+            let l = match pars.parse_formula().unwrap().distribute() {
                 Ok(s) => format!("{s}"),
                 Err(s) => format!("{s}"),
             };

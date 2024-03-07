@@ -105,7 +105,7 @@ impl Lexer {
                 token::Kind::Identifier
             }
             _ => {
-                self.skip_while(is_not_alphanumeric_whitespace);
+                self.skip_while(is_not_whitespace);
                 token::Kind::Invalid
             }
         };
@@ -139,6 +139,10 @@ fn is_alphanumeric(c: u8) -> bool {
 
 fn is_whitespace(c: u8) -> bool {
     c.is_ascii_whitespace()
+}
+
+fn is_not_whitespace(c: u8) -> bool {
+    !is_whitespace(c)
 }
 
 fn is_not_alphanumeric_whitespace(c: u8) -> bool {

@@ -14,15 +14,20 @@ pub fn repl() -> Res<()> {
     print!("{}", PROMPT);
     let _ = io::stdout().flush();
     for line in stdin.lines() {
-        pars.load_bytes(line?)?;
-        loop {
-            match pars.parse_formula() {
-                Ok(ast::Formula::Eof) => break,
-                Ok(parsed) => println!("{}", parsed),
-                Err(err) => println!("{}", err),
+        // TODO: don't parse a line until it ends with `;`?
+        if let Err(err) = pars.load_bytes(line?) {
+            eprintln!("{}", err);
+        } else {
+            loop {
+                match pars.parse_formula() {
+                    Ok(ast::Formula::Eof) => break,
+                    Ok(parsed) => {
+                        println!("{} --[simplify]-> {}", parsed.clone(), parsed.distribute()?)
+                    }
+                    Err(err) => eprintln!("{}", err),
+                }
             }
         }
-
         print!("{}", PROMPT);
         io::stdout().flush()?;
     }

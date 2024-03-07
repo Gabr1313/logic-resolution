@@ -59,7 +59,7 @@ impl Parser {
         if self.curr_tok().kind() != token::Kind::SemiColon {
             return Err(ParseErr::new(
                 self.curr_tok().clone(),
-                format!("expected {:?}", token::Kind::SemiColon),
+                format!("expected `{}`", token::Kind::SemiColon),
             ));
         }
         self.skip_tok()?;
@@ -100,7 +100,7 @@ impl Parser {
         if self.curr_tok().kind() != token::Kind::ParenR {
             return Err(ParseErr::new(
                 self.curr_tok().clone(),
-                format!("expected {:?}", token::Kind::ParenR),
+                format!("expected `{}`", token::Kind::ParenR),
             ));
         }
         self.skip_tok()?;
@@ -220,7 +220,7 @@ x <=> y => z | w & !v;
             "(((((!x) & y) | z) => w) <=> v)",
             "(((!x) | (y | z)) <=> ((!w) => (v & b)))",
             "Parse error [15:1]: got=`=>` (Implies): not the beginning of a formula",
-            "Parse error [16:7]: got=`;` (SemiColon): expected ParenR",
+            "Parse error [16:7]: got=`;` (SemiColon): expected `)`",
             "Parse error [16:7]: got=`;` (SemiColon): not the beginning of a formula",
             "EOF",
         ];
