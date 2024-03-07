@@ -30,6 +30,24 @@ impl Kind {
     }
 }
 
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            Self::Invalid => write!(f, "INVALID",),
+            Self::Eof => write!(f, "EOF",),
+            Self::Identifier => write!(f, "IDENTIFIER",),
+            Self::ParenL => write!(f, "(",),
+            Self::ParenR => write!(f, ")",),
+            Self::And => write!(f, "&",),
+            Self::Or => write!(f, "|",),
+            Self::Not => write!(f, "!",),
+            Self::Implies => write!(f, "=>",),
+            Self::Equiv => write!(f, "<=>",),
+            Self::SemiColon => write!(f, ";",),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
     kind: Kind,
@@ -58,6 +76,9 @@ impl Token {
     }
     pub fn literal(&self) -> &str {
         &self.literal
+    }
+    pub fn destory(self) -> String {
+        self.literal
     }
     pub fn row(&self) -> usize {
         self.row

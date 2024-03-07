@@ -108,17 +108,18 @@ impl Parser {
     }
 
     fn parse_leaf(&mut self) -> Res<ast::Formula> {
-        Ok(ast::Formula::new_leaf(self.skip_tok()?))
+        let t = self.skip_tok()?;
+        Ok(ast::Formula::new_leaf(t.destory()))
     }
 
     fn parse_unary(&mut self) -> Res<ast::Formula> {
-        let operator = self.skip_tok()?;
+        let operator = self.skip_tok()?.kind();
         let p = operator.precedence();
         Ok(ast::Formula::new_unary(operator, self.recursive_pratt(p)?))
     }
 
     fn parse_binary(&mut self, left: ast::Formula) -> Res<ast::Formula> {
-        let operator = self.skip_tok()?;
+        let operator = self.skip_tok()?.kind();
         let p = operator.precedence();
         Ok(ast::Formula::new_binary(
             left,
@@ -193,7 +194,7 @@ x <=> y => z | w & !v;
 =>
 (x | y;
 ";
-        // i suppose that the lexer test passes
+        // i suppose that the lexer tests pass
         let mut lex_test = lexer::Lexer::new();
         lex_test.load_bytes(buffer.to_string());
         let mut tokens = Vec::new();
