@@ -51,10 +51,10 @@ impl fmt::Display for Formula {
             f,
             "{}",
             match self {
-                Formula::Leaf(l) => format!("{}", l.ident),
+                Formula::Leaf(l) => l.ident.to_string(),
                 Formula::Unary(u) => format!("({}{})", u.operator, u.right),
                 Formula::Binary(b) => format!("({} {} {})", b.left, b.operator, b.right),
-                Formula::Eof => format!("EOF"),
+                Formula::Eof => "EOF".to_string(),
             }
         )
     }
@@ -76,6 +76,12 @@ impl Formula {
             operator,
             right: Box::new(right),
         })
+    }
+    fn is_and(&self) -> bool {
+        match self {
+            Formula::Binary(x) => x.operator == token::Kind::And,
+            _ => false,
+        }
     }
 
     /// push `!` inside, and substitue `=>` and`<=>`
@@ -115,7 +121,7 @@ impl Formula {
                             right.negate_and_simplify()?,
                         ),
                     ),
-                    _ => todo!("this is not an unary opertor"),
+                    _ => todo!("this is not a binary opertor"),
                 }
             }
             Formula::Leaf(_) => self,
@@ -123,7 +129,7 @@ impl Formula {
         })
     }
 
-    fn negate_and_simplify(self) -> Res<Self> {
+    pub fn negate_and_simplify(self) -> Res<Self> {
         Ok(match self {
             Formula::Unary(x) => {
                 let (operator, right) = x.destroy();
@@ -162,13 +168,85 @@ impl Formula {
             Formula::Eof => todo!("should not be in ast"),
         })
     }
+
+    pub fn distribute(self) -> Res<Self> {
+        Ok(match self {
+            Formula::Unary(_) => self, // should be only before a leaf
+            Formula::Binary(x) => {
+                let (left, operator, right) = x.destroy();
+                let left = left.distribute()?;
+                let right = right.distribute()?;
+                match operator {
+                    token::Kind::And => Self::new_binary(left, token::Kind::And, right),
+                    token::Kind::Or => {
+                        if left.is_and() {
+                            Self::distribute_left(left, right)?
+                        } else if right.is_and() {
+                            Self::distribute_right(left, right)?
+                        } else {
+                            Self::new_binary(left, token::Kind::Or, right)
+                        }
+                    }
+                    token::Kind::Implies => todo!("should never happen"),
+                    token::Kind::Equiv => todo!("should never happen"),
+                    _ => todo!("this is not an binary opertor"),
+                }
+            }
+            Formula::Leaf(_) => self,
+            Formula::Eof => todo!("should not be in ast"),
+        })
+    }
+
+    /// distribute recursively
+    ///     |              &
+    ///   &   c         |     |
+    ///  a b           a c   b c
+    fn distribute_left(left: Formula, right: Formula) -> Res<Self> {
+        Ok(if let Self::Binary(l) = left {
+            if l.operator == token::Kind::And {
+                let (a, _, b) = l.destroy();
+                let c = right;
+                Self::new_binary(
+                    Self::new_binary(a, token::Kind::Or, c.clone()).distribute()?,
+                    token::Kind::And,
+                    Self::new_binary(b, token::Kind::Or, c).distribute()?,
+                )
+            } else {
+                todo!("impossible");
+            }
+        } else {
+            todo!("impossible");
+        })
+    }
+
+    /// distribute recursively
+    ///     |              &
+    ///  c     &        |      |
+    ///       a b      c a    c b
+    fn distribute_right(left: Self, right: Self) -> Res<Self> {
+        Ok(if let Self::Binary(r) = right {
+            if r.operator == token::Kind::And {
+                let (a, _, b) = r.destroy();
+                let c = left;
+                Self::new_binary(
+                    Self::new_binary(c.clone(), token::Kind::Or, a).distribute()?,
+                    token::Kind::And,
+                    Self::new_binary(c, token::Kind::Or, b).distribute()?,
+                )
+            } else {
+                todo!("impossible");
+            }
+        } else {
+            todo!("impossible");
+        })
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{lexer, parser::Parser, token};
 
-    fn compare(pars: &mut Parser, expected: &[&str]) {
+    fn compare_simplify(pars: &mut Parser, expected: &[&str]) {
         for &exp in expected {
             // i suppose that the parser tests pass
             let l = match pars.parse_formula().unwrap().simplify() {
@@ -182,7 +260,7 @@ mod test {
     }
 
     #[test]
-    fn test_parser() {
+    fn test_simplify() {
         let buffer = "
 !x;
 x & y;
@@ -217,6 +295,54 @@ x | y => z;
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
         let mut parser = Parser::new(lex).unwrap();
-        compare(&mut parser, expected);
+        compare_simplify(&mut parser, expected);
+    }
+
+    fn compare_distribute(pars: &mut Parser, expected: &[&str]) {
+        for &exp in expected {
+            // i suppose that the parser and the simplify tests pass
+            let l = match pars
+                .parse_formula()
+                .unwrap()
+                .simplify()
+                .unwrap()
+                .distribute()
+            {
+                Ok(s) => format!("{s}"),
+                Err(s) => format!("{s}"),
+            };
+            if exp != l {
+                panic!("expected=`{exp}`\ngot     =`{l}`")
+            }
+        }
+    }
+
+    #[test]
+    fn test_distribute() {
+        let buffer = "
+x <=> y;
+a | (b & c & (d | e | (f & g)));
+a & (b | c | (d & e & (f | g)));
+";
+        // i suppose that the lexer tests pass
+        let mut lex_test = lexer::Lexer::new();
+        lex_test.load_bytes(buffer.to_string());
+        let mut tokens = Vec::new();
+        while let Ok(t) = lex_test.next_tok() {
+            if t.kind() == token::Kind::Eof {
+                break;
+            }
+            tokens.push(Some(t));
+        }
+
+        let expected: &[&str] = &[
+            "(((x | (!x)) & (x | (!y))) & ((y | (!x)) & (y | (!y))))",
+            "(((a | b) & (a | c)) & ((a | ((d | e) | f)) & (a | ((d | e) | g))))",
+            "(a & ((((b | c) | d) & ((b | c) | e)) & ((b | c) | (f | g))))",
+        ];
+        let mut lex = lexer::Lexer::new();
+        lex.load_bytes(buffer.to_string());
+        let mut parser = Parser::new(lex).unwrap();
+        compare_distribute(&mut parser, expected);
     }
 }
