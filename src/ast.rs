@@ -1,5 +1,5 @@
 use crate::{token, Res};
-use std::fmt;
+use std::{error::Error, fmt};
 
 #[derive(Debug, Clone)]
 pub struct Unary {
@@ -91,7 +91,12 @@ impl Formula {
                 let (operator, right) = x.destroy();
                 match operator {
                     token::Kind::Not => right.negate_and_simplify()?,
-                    _ => todo!("this is not an unary opertor"),
+                    _ => {
+                        return Err(InternalErrorTok::new(
+                            operator,
+                            "not a valid unary operator".to_string(),
+                        ))
+                    }
                 }
             }
             Formula::Binary(x) => {
@@ -121,11 +126,21 @@ impl Formula {
                             right.negate_and_simplify()?,
                         ),
                     ),
-                    _ => todo!("this is not a binary opertor"),
+                    _ => {
+                        return Err(InternalErrorTok::new(
+                            operator,
+                            "not a valid binary operator".to_string(),
+                        ))
+                    }
                 }
             }
             Formula::Leaf(_) => self,
-            Formula::Eof => todo!("should not be in ast"),
+            Formula::Eof => {
+                return Err(InternalErrorTok::new(
+                    token::Kind::Eof,
+                    "should not be in ast".to_string(),
+                ))
+            }
         })
     }
 
@@ -135,7 +150,12 @@ impl Formula {
                 let (operator, right) = x.destroy();
                 match operator {
                     token::Kind::Not => right,
-                    _ => todo!("this is not an unary opertor"),
+                    _ => {
+                        return Err(InternalErrorTok::new(
+                            token::Kind::Eof,
+                            "not an unary opertor".to_string(),
+                        ))
+                    }
                 }
             }
             Formula::Binary(x) => {
@@ -161,11 +181,21 @@ impl Formula {
                         token::Kind::Equiv,
                         right.negate_and_simplify()?,
                     ),
-                    _ => todo!("this is not a binary opertor"),
+                    _ => {
+                        return Err(InternalErrorTok::new(
+                            token::Kind::Eof,
+                            "not a binnary opertor".to_string(),
+                        ))
+                    }
                 }
             }
             Formula::Leaf(_) => Self::new_unary(token::Kind::Not, self),
-            Formula::Eof => todo!("should not be in ast"),
+            Formula::Eof => {
+                return Err(InternalErrorTok::new(
+                    token::Kind::Eof,
+                    "should not be in ast".to_string(),
+                ))
+            }
         })
     }
 
@@ -187,13 +217,27 @@ impl Formula {
                             Self::new_binary(left, token::Kind::Or, right)
                         }
                     }
-                    token::Kind::Implies => todo!("should never happen"),
-                    token::Kind::Equiv => todo!("should never happen"),
-                    _ => todo!("this is not an binary opertor"),
+                    token::Kind::Implies | token::Kind::Equiv => {
+                        return Err(InternalErrorTok::new(
+                            operator,
+                            "Call simplify before".to_string(),
+                        ))
+                    }
+                    _ => {
+                        return Err(InternalErrorTok::new(
+                            operator,
+                            "not a valid binary operator".to_string(),
+                        ))
+                    }
                 }
             }
             Formula::Leaf(_) => self,
-            Formula::Eof => todo!("should not be in ast"),
+            Formula::Eof => {
+                return Err(InternalErrorTok::new(
+                    token::Kind::Eof,
+                    "should not be in ast".to_string(),
+                ))
+            }
         })
     }
 
@@ -212,10 +256,10 @@ impl Formula {
                     Self::new_binary(b, token::Kind::Or, c).distribute()?,
                 )
             } else {
-                todo!("impossible");
+                return Err(InternalError::new("assert left.is_and()".to_string()));
             }
         } else {
-            todo!("impossible");
+            return Err(InternalError::new("assert left.is_and()".to_string()));
         })
     }
 
@@ -234,11 +278,48 @@ impl Formula {
                     Self::new_binary(c, token::Kind::Or, b).distribute()?,
                 )
             } else {
-                todo!("impossible");
+                return Err(InternalError::new("assert right.is_and()".to_string()));
             }
         } else {
-            todo!("impossible");
+            return Err(InternalError::new("assert right.is_and()".to_string()));
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct InternalErrorTok {
+    kind: token::Kind,
+    message: String,
+}
+#[derive(Debug)]
+pub struct InternalError {
+    message: String,
+}
+impl Error for InternalErrorTok {}
+impl Error for InternalError {}
+
+impl InternalError {
+    pub fn new(message: String) -> Box<Self> {
+        Box::new(Self { message })
+    }
+}
+impl InternalErrorTok {
+    pub fn new(tok: token::Kind, message: String) -> Box<Self> {
+        Box::new(Self { kind: tok, message })
+    }
+}
+impl fmt::Display for InternalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Interanl error: {}", self.message)
+    }
+}
+impl fmt::Display for InternalErrorTok {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Interanl error: got=`{:?}` : {}",
+            self.kind, self.message
+        )
     }
 }
 
