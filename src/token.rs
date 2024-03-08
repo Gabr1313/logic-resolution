@@ -33,17 +33,17 @@ impl Kind {
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            Self::Invalid => write!(f, "INVALID",),
-            Self::Eof => write!(f, "EOF",),
-            Self::Identifier => write!(f, "IDENTIFIER",),
-            Self::ParenL => write!(f, "(",),
-            Self::ParenR => write!(f, ")",),
-            Self::And => write!(f, "&",),
-            Self::Or => write!(f, "|",),
-            Self::Not => write!(f, "!",),
-            Self::Implies => write!(f, "=>",),
-            Self::Equiv => write!(f, "<=>",),
-            Self::SemiColon => write!(f, ";",),
+            Kind::Invalid => write!(f, "INVALID",),
+            Kind::Eof => write!(f, "EOF",),
+            Kind::Identifier => write!(f, "IDENTIFIER",),
+            Kind::ParenL => write!(f, "(",),
+            Kind::ParenR => write!(f, ")",),
+            Kind::And => write!(f, "&",),
+            Kind::Or => write!(f, "|",),
+            Kind::Not => write!(f, "!",),
+            Kind::Implies => write!(f, "=>",),
+            Kind::Equiv => write!(f, "<=>",),
+            Kind::SemiColon => write!(f, ";",),
         }
     }
 }
@@ -63,7 +63,7 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    pub fn new(kind: Kind, literal: String, row: usize, col: usize) -> Self {
+    pub fn new(kind: Kind, literal: String, row: usize, col: usize) -> Token {
         Token {
             kind,
             literal,
@@ -101,7 +101,7 @@ pub struct InvalidTokenErr {
 impl Error for InvalidTokenErr {}
 
 impl InvalidTokenErr {
-    pub fn new(tok: String, row: usize, col: usize) -> Box<Self> {
+    pub fn new(tok: String, row: usize, col: usize) -> Box<InvalidTokenErr> {
         Box::new(InvalidTokenErr { tok, col, row })
     }
 }

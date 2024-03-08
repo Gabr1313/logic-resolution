@@ -10,7 +10,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    pub fn new() -> Self {
+    pub fn new() -> Lexer {
         Lexer {
             buffer: "".to_string(),
             pos: 0,
@@ -101,6 +101,8 @@ impl Lexer {
                 }
             },
             Some(b'a'..=b'z' | b'A'..=b'Z') => {
+                // TODO: save Identifier as a progressive number
+                // (compare string O(n_id), trie(s.len()) -> to the easiest)
                 self.skip_while(is_alphanumeric);
                 token::Kind::Identifier
             }

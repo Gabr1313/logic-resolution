@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 
 use crate::ast;
+use crate::clause;
 use crate::lexer;
 use crate::parser;
 use crate::Res;
@@ -14,7 +15,6 @@ pub fn repl() -> Res<()> {
     print!("{}", PROMPT);
     let _ = io::stdout().flush();
     for line in stdin.lines() {
-        // TODO: don't parse a line until it ends with `;`?
         if let Err(err) = pars.load_bytes(line?) {
             eprintln!("{}", err);
         } else {
@@ -22,7 +22,9 @@ pub fn repl() -> Res<()> {
                 match pars.parse_formula() {
                     Ok(ast::Formula::Eof) => break,
                     Ok(parsed) => {
-                        println!("{} --[simplify]-> {}", parsed.clone(), parsed.distribute()?)
+                        let mut c  = clause::Clauses::new();
+                        c.add(&parsed.clone().distribute()?);
+                        println!("{} --[clauses]-> {}", parsed, c)
                     }
                     Err(err) => eprintln!("{}", err),
                 }

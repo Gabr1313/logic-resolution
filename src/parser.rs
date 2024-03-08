@@ -12,7 +12,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(lex: lexer::Lexer) -> Res<Self> {
+    pub fn new(lex: lexer::Lexer) -> Res<Parser> {
         let mut p = Parser {
             lex,
             curr_tok: None,
@@ -138,7 +138,7 @@ pub struct ParseErr {
 impl Error for ParseErr {}
 
 impl ParseErr {
-    pub fn new(tok: token::Token, message: String) -> Box<Self> {
+    pub fn new(tok: token::Token, message: String) -> Box<ParseErr> {
         Box::new(ParseErr { tok, message })
     }
 }
