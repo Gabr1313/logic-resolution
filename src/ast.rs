@@ -44,7 +44,8 @@ impl Leaf {
         self.ident
     }
     pub fn string(&self) -> String {
-        // TODO: no close
+        // TODO: no clone -> RC (but also the lexer should be aware...)
+        // or progressive number
         self.ident.to_string()
     }
 }
@@ -96,7 +97,6 @@ impl Formula {
         }
     }
 
-    // TODO: find a better name for this function
     /// push `!` inside (simplifying if repeated), and substitue `=>` and`<=>`
     fn digest(self) -> Res<Formula> {
         Ok(match self {
@@ -161,7 +161,6 @@ impl Formula {
         })
     }
 
-    // TODO: find a better name for this function
     pub fn negate_digest(self) -> Res<Formula> {
         Ok(match self {
             Formula::Unary(x) => {

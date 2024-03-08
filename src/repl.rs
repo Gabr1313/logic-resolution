@@ -2,9 +2,9 @@ use std::io::{self, Write};
 
 use crate::ast;
 use crate::clause;
+use crate::error::Res;
 use crate::lexer;
 use crate::parser;
-use crate::error::Res;
 
 const PROMPT: &str = ">> ";
 
@@ -26,7 +26,7 @@ pub fn repl() -> Res<()> {
                         println!("--[tree]->       {}", parsed);
                         let dist = parsed.distribute()?;
                         println!("--[distribute]-> {}", dist);
-                        let c = clause::Clauses::new(dist);
+                        let c = clause::Clauses::new(dist)?; // should not panic
                         println!("--[clauses]->    {}", c);
                         // clauses.push(c);
                     }

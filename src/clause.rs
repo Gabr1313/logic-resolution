@@ -1,4 +1,8 @@
-use crate::{ast, token};
+use crate::{
+    ast,
+    error::{InternalErrorTok,InternalError , Res},
+    token,
+};
 use std::{collections::BTreeSet, fmt};
 
 #[derive(Eq, Hash, PartialEq, Ord, PartialOrd)]
@@ -49,12 +53,12 @@ impl fmt::Display for Clauses {
 }
 
 impl Clauses {
-    pub fn new(formula: ast::Formula) -> Clauses {
+    pub fn new(formula: ast::Formula) -> Res<Clauses> {
         let mut c = Clauses {
             bt: BTreeSet::new(),
         };
-        c.add(formula);
-        c
+        c.add(formula)?;
+        Ok(c)
     }
 
     pub fn merge(clauses: Vec<Clauses>) -> Clauses {
@@ -67,7 +71,7 @@ impl Clauses {
     }
 
     /// sorted and deduplicated
-    fn add(&mut self, formula: ast::Formula) {
+    fn add(&mut self, formula: ast::Formula) -> Res<()> {
         // find `or` recursively than call append_to_clause()
         match formula {
             ast::Formula::Binary(x) => {
@@ -75,34 +79,40 @@ impl Clauses {
                 if operator == token::Kind::Or {
                     let mut bt = BTreeSet::new();
                     // compiler does not evaluate the second expression if the first one is false
-                    if Clauses::append_to_clause(&mut bt, left)
-                        && Clauses::append_to_clause(&mut bt, right)
+                    if Clauses::append_to_clause(&mut bt, left)?
+                        && Clauses::append_to_clause(&mut bt, right)?
                     {
                         self.bt.insert(bt);
                     }
                 } else {
                     debug_assert!(operator == token::Kind::And);
-                    self.add(left);
-                    self.add(right);
+                    self.add(left)?;
+                    self.add(right)?;
                 }
             }
             ast::Formula::Unary(_) | ast::Formula::Leaf(_) => {
                 let mut bt = BTreeSet::new();
-                if Clauses::append_to_clause(&mut bt, formula) {
+                if Clauses::append_to_clause(&mut bt, formula)? {
                     self.bt.insert(bt);
                 }
             }
-            ast::Formula::Eof => todo!("impossible"),
-        }
+            ast::Formula::Eof => {
+                return Err(InternalErrorTok::new(
+                    token::Kind::Eof,
+                    "should not be in ast".to_string(),
+                ))
+            }
+        };
+        Ok(())
     }
 
-    fn append_to_clause(bt: &mut BTreeSet<Atom>, f: ast::Formula) -> bool {
-        match f {
+    fn append_to_clause(bt: &mut BTreeSet<Atom>, f: ast::Formula) -> Res<bool> {
+        Ok(match f {
             ast::Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 debug_assert!(operator == token::Kind::Or);
                 // compiler does not evaluate the second expression if the first one is false
-                Clauses::append_to_clause(bt, left) && Clauses::append_to_clause(bt, right)
+                Clauses::append_to_clause(bt, left)? && Clauses::append_to_clause(bt, right)?
             }
             ast::Formula::Unary(x) => {
                 debug_assert!(x.operator() == token::Kind::Not);
@@ -115,7 +125,9 @@ impl Clauses {
                         true
                     }
                 } else {
-                    todo!("impossible: see ast::Formula::digest()");
+                    return Err(InternalError::new(
+                        "this should be a leaf, see ast::Formula::digest()".to_string(),
+                    ));
                 }
             }
             ast::Formula::Leaf(x) => {
@@ -127,8 +139,13 @@ impl Clauses {
                     true
                 }
             }
-            ast::Formula::Eof => todo!("impossible"),
-        }
+            ast::Formula::Eof => {
+                return Err(InternalErrorTok::new(
+                    token::Kind::Eof,
+                    "should not be in ast".to_string(),
+                ))
+            }
+        })
     }
 }
 
@@ -140,7 +157,10 @@ mod test {
     fn compare(pars: &mut parser::Parser, expected: &[&str]) {
         for &exp in expected {
             let c = Clauses::new(pars.parse_formula().unwrap().distribute().unwrap());
-            let s = c.to_string();
+            let s = match c {
+                Ok(c) => c.to_string(),
+                Err(c) => c.to_string(),
+            };
             if exp != s {
                 panic!("expected=`{exp}`\ngot     =`{s}`")
             }
@@ -192,7 +212,7 @@ a & (b | c | (d & e & (f | g)));
             match pars.parse_formula() {
                 Ok(ast::Formula::Eof) => break,
                 Ok(parsed) => {
-                    let c = Clauses::new(parsed.distribute().unwrap());
+                    let c = Clauses::new(parsed.distribute().unwrap()).unwrap();
                     v.push(c);
                 }
                 Err(err) => panic!("{err}"),

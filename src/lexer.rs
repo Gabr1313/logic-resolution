@@ -101,7 +101,7 @@ impl Lexer {
                 }
             },
             Some(b'a'..=b'z' | b'A'..=b'Z') => {
-                // TODO: save Identifier as a progressive number
+                // TODO: save Identifier as a progressive number ?
                 // (compare string O(n_id), trie(s.len()) -> to the easiest)
                 self.skip_while(is_alphanumeric);
                 token::Kind::Identifier
