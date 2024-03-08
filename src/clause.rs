@@ -115,8 +115,7 @@ impl Clauses {
                         true
                     }
                 } else {
-                    debug_assert!(false); // impossible: see ast::Formula::digest()
-                    false
+                    todo!("impossible: see ast::Formula::digest()");
                 }
             }
             ast::Formula::Leaf(x) => {

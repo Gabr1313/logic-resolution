@@ -4,7 +4,7 @@ use crate::ast;
 use crate::clause;
 use crate::lexer;
 use crate::parser;
-use crate::Res;
+use crate::error::Res;
 
 const PROMPT: &str = ">> ";
 

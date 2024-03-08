@@ -1,4 +1,4 @@
-use std::{error::Error, fmt};
+use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Kind {
@@ -91,23 +91,3 @@ impl Token {
     }
 }
 
-#[derive(Debug)]
-pub struct InvalidTokenErr {
-    tok: String,
-    row: usize,
-    col: usize,
-}
-
-impl Error for InvalidTokenErr {}
-
-impl InvalidTokenErr {
-    pub fn new(tok: String, row: usize, col: usize) -> Box<InvalidTokenErr> {
-        Box::new(InvalidTokenErr { tok, col, row })
-    }
-}
-
-impl fmt::Display for InvalidTokenErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid token [{}:{}]: {}", self.row, self.col, self.tok)
-    }
-}

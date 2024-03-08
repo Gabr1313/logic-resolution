@@ -1,5 +1,7 @@
-use crate::{token, Res};
-use std::{error::Error, fmt};
+use std::fmt;
+
+use crate::token;
+use crate::error::{Res, InternalErrorTok, InternalError};
 
 #[derive(Debug, Clone)]
 pub struct Unary {
@@ -306,43 +308,6 @@ impl Formula {
         } else {
             return Err(InternalError::new("assert right.is_and()".to_string()));
         })
-    }
-}
-
-#[derive(Debug)]
-pub struct InternalErrorTok {
-    kind: token::Kind,
-    message: String,
-}
-#[derive(Debug)]
-pub struct InternalError {
-    message: String,
-}
-impl Error for InternalErrorTok {}
-impl Error for InternalError {}
-
-impl InternalError {
-    pub fn new(message: String) -> Box<InternalError> {
-        Box::new(InternalError { message })
-    }
-}
-impl InternalErrorTok {
-    pub fn new(tok: token::Kind, message: String) -> Box<InternalErrorTok> {
-        Box::new(InternalErrorTok { kind: tok, message })
-    }
-}
-impl fmt::Display for InternalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Interanl error: {}", self.message)
-    }
-}
-impl fmt::Display for InternalErrorTok {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Interanl error: got=`{:?}` : {}",
-            self.kind, self.message
-        )
     }
 }
 

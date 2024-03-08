@@ -1,5 +1,5 @@
 use crate::token;
-use crate::Res;
+use crate::error::{Res, InvalidTokenErr};
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -113,7 +113,7 @@ impl Lexer {
         };
         let s = self.buffer[init_pos..self.pos].to_string();
         if tok_kind == token::Kind::Invalid {
-            Err(token::InvalidTokenErr::new(s, init_row, init_col))
+            Err(InvalidTokenErr::new(s, init_row, init_col))
         } else {
             Ok(token::Token::new(tok_kind, s, init_row, init_col))
         }
@@ -155,7 +155,7 @@ fn is_not_alphanumeric_whitespace(c: u8) -> bool {
 mod test {
     use super::Lexer;
     use crate::token;
-    use crate::Res;
+    use crate::error::{Res, InvalidTokenErr};
 
     fn compare(lex: &mut Lexer, expected: &[Res<token::Token>]) {
         for exp in expected {
@@ -333,7 +333,7 @@ x <y
                 9,
                 15,
             )),
-            Err(token::InvalidTokenErr::new("<<=>".to_string(), 10, 1)),
+            Err(InvalidTokenErr::new("<<=>".to_string(), 10, 1)),
             Ok(token::Token::new(
                 token::Kind::Identifier,
                 "y".to_string(),
@@ -346,14 +346,14 @@ x <y
                 11,
                 1,
             )),
-            Err(token::InvalidTokenErr::new("<".to_string(), 11, 3)),
+            Err(InvalidTokenErr::new("<".to_string(), 11, 3)),
             Ok(token::Token::new(
                 token::Kind::Identifier,
                 "y".to_string(),
                 11,
                 4,
             )),
-            Err(token::InvalidTokenErr::new("^".to_string(), 12, 1)),
+            Err(InvalidTokenErr::new("^".to_string(), 12, 1)),
             Ok(token::Token::new(token::Kind::Eof, "".to_string(), 13, 1)),
         ];
         let mut lex = Lexer::new();

@@ -1,7 +1,4 @@
-use core::fmt;
-use std::error::Error;
-
-use crate::Res;
+use crate::error::{Res, ParseErr};
 use crate::{ast, lexer, token};
 
 #[derive(Debug)]
@@ -126,34 +123,6 @@ impl Parser {
             operator,
             self.recursive_pratt(p)?,
         ))
-    }
-}
-
-#[derive(Debug)]
-pub struct ParseErr {
-    tok: token::Token,
-    message: String,
-}
-
-impl Error for ParseErr {}
-
-impl ParseErr {
-    pub fn new(tok: token::Token, message: String) -> Box<ParseErr> {
-        Box::new(ParseErr { tok, message })
-    }
-}
-
-impl fmt::Display for ParseErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Parse error [{}:{}]: got=`{}` ({:?}): {}",
-            self.tok.row(),
-            self.tok.col(),
-            self.tok.literal(),
-            self.tok.kind(),
-            self.message
-        )
     }
 }
 
