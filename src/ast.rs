@@ -30,15 +30,6 @@ impl Binary {
     pub fn destroy(self) -> (Formula, token::Kind, Formula) {
         (*self.left, self.operator, *self.right)
     }
-    pub fn operator(&self) -> token::Kind {
-        self.operator
-    }
-    pub fn left(&self) -> &Formula {
-        &self.left
-    }
-    pub fn right(&self) -> &Formula {
-        &self.right
-    }
 }
 
 #[derive(Debug, Clone)]

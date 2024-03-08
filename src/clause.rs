@@ -55,22 +55,23 @@ impl Clauses {
         Clauses { vec: Vec::new() }
     }
 
-    pub fn add(&mut self, formula: &ast::Formula) {
+    pub fn add(&mut self, formula: ast::Formula) {
         // find `or` recursively than call append_to_clause()
         match formula {
             ast::Formula::Binary(x) => {
-                if x.operator() == token::Kind::Or {
+                let (left, operator, right) = x.destroy();
+                if operator == token::Kind::Or {
                     let mut v = HashSet::new();
                     // compiler does not evaluate the second expression if the first one is false
-                    if Clauses::append_to_clause(&mut v, x.left())
-                        && Clauses::append_to_clause(&mut v, x.right())
+                    if Clauses::append_to_clause(&mut v, left)
+                        && Clauses::append_to_clause(&mut v, right)
                     {
                         self.vec.push(v);
                     }
                 } else {
-                    debug_assert!(x.operator() == token::Kind::And);
-                    self.add(x.left());
-                    self.add(x.right());
+                    debug_assert!(operator == token::Kind::And);
+                    self.add(left);
+                    self.add(right);
                 }
             }
             ast::Formula::Unary(_) | ast::Formula::Leaf(_) => {
@@ -83,12 +84,13 @@ impl Clauses {
         }
     }
 
-    fn append_to_clause(hs: &mut HashSet<Atom>, f: &ast::Formula) -> bool {
+    fn append_to_clause(hs: &mut HashSet<Atom>, f: ast::Formula) -> bool {
         match f {
             ast::Formula::Binary(x) => {
-                debug_assert!(x.operator() == token::Kind::Or);
+                let (left, operator, right) = x.destroy();
+                debug_assert!(operator == token::Kind::Or);
                 // compiler does not evaluate the second expression if the first one is false
-                Clauses::append_to_clause(hs, x.left()) && Clauses::append_to_clause(hs, x.right())
+                Clauses::append_to_clause(hs, left) && Clauses::append_to_clause(hs, right)
             }
             ast::Formula::Unary(x) => {
                 debug_assert!(x.operator() == token::Kind::Not);
@@ -174,7 +176,7 @@ mod test {
     fn compare(pars: &mut parser::Parser, expected: &[&str]) {
         for &exp in expected {
             let mut c = Clauses::new();
-            c.add(&pars.parse_formula().unwrap().distribute().unwrap());
+            c.add(pars.parse_formula().unwrap().distribute().unwrap());
             let fc = FakeClauses::from(c);
             let s = fc.to_string();
             if exp != s {

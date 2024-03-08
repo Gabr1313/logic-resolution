@@ -22,9 +22,12 @@ pub fn repl() -> Res<()> {
                 match pars.parse_formula() {
                     Ok(ast::Formula::Eof) => break,
                     Ok(parsed) => {
+                        println!("--[tree]->       {}", parsed);
+                        let dist = parsed.distribute()?;
+                        println!("--[distribute]-> {}", dist);
                         let mut c  = clause::Clauses::new();
-                        c.add(&parsed.clone().distribute()?);
-                        println!("{} --[clauses]-> {}", parsed, c)
+                        c.add(dist);
+                        println!("--[clauses]->    {}", c);
                     }
                     Err(err) => eprintln!("{}", err),
                 }
