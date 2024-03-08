@@ -14,6 +14,7 @@ pub fn repl() -> Res<()> {
     let mut pars = parser::Parser::new(lex)?;
     print!("{}", PROMPT);
     let _ = io::stdout().flush();
+    // let mut clauses = Vec::new();
     for line in stdin.lines() {
         if let Err(err) = pars.load_bytes(line?) {
             eprintln!("{}", err);
@@ -25,9 +26,9 @@ pub fn repl() -> Res<()> {
                         println!("--[tree]->       {}", parsed);
                         let dist = parsed.distribute()?;
                         println!("--[distribute]-> {}", dist);
-                        let mut c  = clause::Clauses::new();
-                        c.add(dist);
+                        let c = clause::Clauses::new(dist);
                         println!("--[clauses]->    {}", c);
+                        // clauses.push(c);
                     }
                     Err(err) => eprintln!("{}", err),
                 }

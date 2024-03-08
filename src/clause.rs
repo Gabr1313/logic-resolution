@@ -1,6 +1,5 @@
-use std::{collections::HashSet, fmt};
-
 use crate::{ast, token};
+use std::{collections::BTreeSet, fmt};
 
 #[derive(Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub enum Atom {
@@ -18,14 +17,14 @@ impl Atom {
 }
 
 pub struct Clauses {
-    vec: Vec<HashSet<Atom>>,
+    bt: BTreeSet<BTreeSet<Atom>>, // using a BTreeSet i should avoid duplicates
 }
 
 impl fmt::Display for Clauses {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = String::new();
         s.push('{');
-        for v in &self.vec {
+        for v in &self.bt {
             s.push('{');
             for w in v {
                 match w {
@@ -41,7 +40,7 @@ impl fmt::Display for Clauses {
             s.truncate(s.len() - 2);
             s.push_str("}, ");
         }
-        if self.vec.len() > 0 {
+        if self.bt.len() > 0 {
             s.truncate(s.len() - 2);
         }
         s.push('}');
@@ -50,23 +49,36 @@ impl fmt::Display for Clauses {
 }
 
 impl Clauses {
-    pub fn new() -> Clauses {
-        // TODO: ? with_capacity
-        Clauses { vec: Vec::new() }
+    pub fn new(formula: ast::Formula) -> Clauses {
+        let mut c = Clauses {
+            bt: BTreeSet::new(),
+        };
+        c.add(formula);
+        c
     }
 
-    pub fn add(&mut self, formula: ast::Formula) {
+    pub fn merge(clauses: Vec<Clauses>) -> Clauses {
+        Clauses {
+            bt: clauses.into_iter().fold(BTreeSet::new(), |mut acc, x| {
+                acc.extend(x.bt);
+                acc
+            }),
+        }
+    }
+
+    /// sorted and deduplicated
+    fn add(&mut self, formula: ast::Formula) {
         // find `or` recursively than call append_to_clause()
         match formula {
             ast::Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 if operator == token::Kind::Or {
-                    let mut v = HashSet::new();
+                    let mut bt = BTreeSet::new();
                     // compiler does not evaluate the second expression if the first one is false
-                    if Clauses::append_to_clause(&mut v, left)
-                        && Clauses::append_to_clause(&mut v, right)
+                    if Clauses::append_to_clause(&mut bt, left)
+                        && Clauses::append_to_clause(&mut bt, right)
                     {
-                        self.vec.push(v);
+                        self.bt.insert(bt);
                     }
                 } else {
                     debug_assert!(operator == token::Kind::And);
@@ -75,43 +87,44 @@ impl Clauses {
                 }
             }
             ast::Formula::Unary(_) | ast::Formula::Leaf(_) => {
-                let mut v = HashSet::new();
-                if Clauses::append_to_clause(&mut v, formula) {
-                    self.vec.push(v);
+                let mut bt = BTreeSet::new();
+                if Clauses::append_to_clause(&mut bt, formula) {
+                    self.bt.insert(bt);
                 }
             }
             ast::Formula::Eof => todo!("impossible"),
         }
     }
 
-    fn append_to_clause(hs: &mut HashSet<Atom>, f: ast::Formula) -> bool {
+    fn append_to_clause(bt: &mut BTreeSet<Atom>, f: ast::Formula) -> bool {
         match f {
             ast::Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 debug_assert!(operator == token::Kind::Or);
                 // compiler does not evaluate the second expression if the first one is false
-                Clauses::append_to_clause(hs, left) && Clauses::append_to_clause(hs, right)
+                Clauses::append_to_clause(bt, left) && Clauses::append_to_clause(bt, right)
             }
             ast::Formula::Unary(x) => {
                 debug_assert!(x.operator() == token::Kind::Not);
                 if let ast::Formula::Leaf(x) = x.right() {
                     // pruning
-                    if hs.contains(&Atom::Positive(x.string())) {
+                    if bt.contains(&Atom::Positive(x.string())) {
                         false
                     } else {
-                        hs.insert(Atom::Negative(x.string()));
+                        bt.insert(Atom::Negative(x.string()));
                         true
                     }
                 } else {
-                    todo!("impossible: see pre_distribute");
+                    debug_assert!(false); // impossible: see ast::Formula::digest()
+                    false
                 }
             }
             ast::Formula::Leaf(x) => {
                 // pruning
-                if hs.contains(&Atom::Negative(x.string())) {
+                if bt.contains(&Atom::Negative(x.string())) {
                     false
                 } else {
-                    hs.insert(Atom::Positive(x.string()));
+                    bt.insert(Atom::Positive(x.string()));
                     true
                 }
             }
@@ -122,63 +135,13 @@ impl Clauses {
 
 #[cfg(test)]
 mod test {
-    use super::{Atom, Clauses};
-    use crate::{lexer, parser, token};
-    use std::fmt;
-
-    struct FakeClauses {
-        vec: Vec<Vec<Atom>>,
-    }
-
-    impl FakeClauses {
-        fn from(c: Clauses) -> FakeClauses {
-            let vec = c
-                .vec
-                .into_iter()
-                .map(|e| {
-                    let mut x: Vec<_> = e.into_iter().collect();
-                    x.sort_unstable();
-                    x
-                })
-                .collect();
-            FakeClauses { vec }
-        }
-    }
-
-    impl fmt::Display for FakeClauses {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut s = String::new();
-            s.push('{');
-            for v in &self.vec {
-                s.push('{');
-                for w in v {
-                    match w {
-                        Atom::Positive(x) => s.push_str(&x),
-                        Atom::Negative(x) => {
-                            s.push('!');
-                            s.push_str(&x);
-                        }
-                    }
-                    s.push_str(", ");
-                }
-                debug_assert!(v.len() > 0);
-                s.truncate(s.len() - 2);
-                s.push_str("}, ");
-            }
-            if self.vec.len() > 0 {
-                s.truncate(s.len() - 2);
-            }
-            s.push('}');
-            write!(f, "{}", s,)
-        }
-    }
+    use super::Clauses;
+    use crate::{ast, lexer, parser, token};
 
     fn compare(pars: &mut parser::Parser, expected: &[&str]) {
         for &exp in expected {
-            let mut c = Clauses::new();
-            c.add(pars.parse_formula().unwrap().distribute().unwrap());
-            let fc = FakeClauses::from(c);
-            let s = fc.to_string();
+            let c = Clauses::new(pars.parse_formula().unwrap().distribute().unwrap());
+            let s = c.to_string();
             if exp != s {
                 panic!("expected=`{exp}`\ngot     =`{s}`")
             }
@@ -190,6 +153,8 @@ mod test {
         let buffer = "
 x;
 !x;
+a | a;
+a & a;
 a <=> b;
 a | (b & c & (d | e | (f & g)));
 a & (b | c | (d & e & (f | g)));
@@ -209,6 +174,8 @@ a & (b | c | (d & e & (f | g)));
         let expected: &[&str] = &[
             "{{x}}",
             "{{!x}}",
+            "{{a}}",
+            "{{a}}",
             "{{a, !b}, {b, !a}}",
             "{{a, b}, {a, c}, {a, d, e, f}, {a, d, e, g}}",
             "{{a}, {b, c, d}, {b, c, e}, {b, c, f, g}}",
@@ -218,5 +185,52 @@ a & (b | c | (d & e & (f | g)));
         lex.load_bytes(buffer.to_string());
         let mut parser = parser::Parser::new(lex).unwrap();
         compare(&mut parser, expected);
+    }
+
+    fn compare_merge(pars: &mut parser::Parser, expected: &str) {
+        let mut v = Vec::new();
+        loop {
+            match pars.parse_formula() {
+                Ok(ast::Formula::Eof) => break,
+                Ok(parsed) => {
+                    let c = Clauses::new(parsed.distribute().unwrap());
+                    v.push(c);
+                }
+                Err(err) => panic!("{err}"),
+            }
+        }
+        let t = Clauses::merge(v);
+        let s = t.to_string();
+        if expected != s {
+            panic!("expected=`{expected}`\ngot     =`{s}`")
+        }
+    }
+
+    #[test]
+    fn test_merge() {
+        let buffer = "
+a | a;
+a & a;
+a & b;
+b & a;
+a | b;
+b | a;
+        ";
+        // i suppose that the lexer tests pass
+        let mut lex_test = lexer::Lexer::new();
+        lex_test.load_bytes(buffer.to_string());
+        let mut tokens = Vec::new();
+        while let Ok(t) = lex_test.next_tok() {
+            if t.kind() == token::Kind::Eof {
+                break;
+            }
+            tokens.push(Some(t));
+        }
+
+        let expected = "{{a}, {a, b}, {b}}";
+        let mut lex = lexer::Lexer::new();
+        lex.load_bytes(buffer.to_string());
+        let mut parser = parser::Parser::new(lex).unwrap();
+        compare_merge(&mut parser, expected);
     }
 }
