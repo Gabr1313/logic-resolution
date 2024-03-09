@@ -3,28 +3,29 @@ use crate::error::{InternalError, InternalErrorTok, Res};
 use crate::token;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
+use std::rc::Rc;
 
 #[cfg(test)]
 mod test;
 
 #[derive(Eq, Hash, PartialEq, Ord, PartialOrd, Clone)]
+// @perf comparing 2 atoms is so slow...
 pub enum Atom {
-    Positive(String),
-    Negative(String),
+    Positive(Rc<String>),
+    Negative(Rc<String>),
 }
 
 impl Atom {
-    pub fn new_affermative(s: String) -> Atom {
+    pub fn new_affermative(s: Rc<String>) -> Atom {
         Atom::Positive(s)
     }
-    pub fn new_negative(s: String) -> Atom {
+    pub fn new_negative(s: Rc<String>) -> Atom {
         Atom::Negative(s)
     }
-    /// @todo: so inefficient
     pub fn opposite(&self) -> Atom {
         match self {
-            Atom::Positive(x) => Atom::Negative(x.to_string()),
-            Atom::Negative(x) => Atom::Positive(x.to_string()),
+            Atom::Positive(x) => Atom::Negative(Rc::clone(x)),
+            Atom::Negative(x) => Atom::Positive(Rc::clone(x)),
         }
     }
 }
@@ -32,8 +33,8 @@ impl Atom {
 /// sort: positive before negative, then lexological order
 #[derive(Default)]
 pub struct Clauses {
-    // @pref would it be better to use HashSets? -> problem: print in tests
-    //       would not be deterministic
+    // @perf would it be better to use HashSets? 
+    //       -> problem: print in tests would not be deterministic
     // using a BTreeSet i should avoid duplicates
     bt: BTreeSet<BTreeSet<Atom>>,
 }
@@ -167,11 +168,11 @@ impl Clauses {
             for w in v {
                 match w {
                     Atom::Positive(x) => hm
-                        .entry(x.clone()) // @todo not clone: Rc or use an ID instead of String
+                        .entry(Rc::clone(x))
                         .and_modify(|(b, _): &mut (bool, bool)| *b = true)
                         .or_insert((true, false)),
                     Atom::Negative(x) => hm
-                        .entry(x.clone()) // @todo not clone: Rc or use an ID instead of String
+                        .entry(Rc::clone(x))
                         .and_modify(|(_, b): &mut (bool, bool)| *b = true)
                         .or_insert((false, true)),
                 };

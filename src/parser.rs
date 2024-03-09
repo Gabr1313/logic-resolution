@@ -5,7 +5,7 @@ use crate::{ast, lexer, token};
 mod test; 
 
 #[derive(Debug)]
-pub struct Parser {
+pub struct Parser{
     lex: lexer::Lexer,
     curr_tok: Option<token::Token>,
     peek_tok: Option<token::Token>,

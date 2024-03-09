@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, rc::Rc};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Kind {
@@ -29,7 +29,7 @@ impl Kind {
         }
     }
 
-    // if you update somthing here, please, update the lexer too!
+    // this is not automatically update with the lexer!
     pub fn as_str(&self) -> &str {
         match &self {
             Kind::Invalid => "INVALID",
@@ -56,7 +56,7 @@ impl fmt::Display for Kind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
     kind: Kind,
-    literal: String, // @perf would it be better to have an ID with and HashMap instead?
+    literal: Rc<String>,
     row: usize,
     col: usize,
 }
@@ -68,7 +68,7 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    pub fn new(kind: Kind, literal: String, row: usize, col: usize) -> Token {
+    pub fn new(kind: Kind, literal: Rc<String>, row: usize, col: usize) -> Token {
         Token {
             kind,
             literal,
@@ -82,7 +82,7 @@ impl Token {
     pub fn literal(&self) -> &str {
         &self.literal
     }
-    pub fn destory(self) -> String {
+    pub fn destory(self) -> Rc<String> {
         self.literal
     }
     pub fn row(&self) -> usize {

@@ -1,5 +1,7 @@
+use crate::error::{InvalidTokenErr, Res};
 use crate::token;
-use crate::error::{Res, InvalidTokenErr};
+use std::collections::HashMap;
+use std::rc::Rc;
 
 #[cfg(test)]
 mod test;
@@ -7,6 +9,9 @@ mod test;
 #[derive(Debug)]
 pub struct Lexer {
     buffer: String,
+    // @perf save ids as a progressive number ?
+    //       -> problem: printing becomes a shitty: where to store the HashMap(Id, String)?
+    ids: HashMap<String, Rc<String>>,
     pos: usize,
     row: usize,
     col: usize,
@@ -16,6 +21,7 @@ impl Lexer {
     pub fn new() -> Lexer {
         Lexer {
             buffer: "".to_string(),
+            ids: HashMap::new(),
             pos: 0,
             row: 0,
             col: 0,
@@ -104,8 +110,6 @@ impl Lexer {
                 }
             },
             Some(b'a'..=b'z' | b'A'..=b'Z') => {
-                // @todo save Identifier as a progressive number ?
-                // (compare string O(n_id), trie(s.len()) -> to the easiest)
                 self.skip_while(is_alphanumeric);
                 token::Kind::Identifier
             }
@@ -114,11 +118,18 @@ impl Lexer {
                 token::Kind::Invalid
             }
         };
-        let s = self.buffer[init_pos..self.pos].to_string();
+        let s = &self.buffer[init_pos..self.pos];
         if tok_kind == token::Kind::Invalid {
-            Err(InvalidTokenErr::new(s, init_row, init_col))
+            Err(InvalidTokenErr::new(s.to_string(), init_row, init_col))
         } else {
-            Ok(token::Token::new(tok_kind, s, init_row, init_col))
+            Ok(if let Some(rc) = self.ids.get(s) {
+                token::Token::new(tok_kind, Rc::clone(rc), init_row, init_col)
+            } else {
+                let s = s.to_string();
+                let rc = Rc::new(s.clone());
+                self.ids.insert(s, Rc::clone(&rc));
+                token::Token::new(tok_kind, rc, init_row, init_col)
+            })
         }
     }
 

@@ -1,6 +1,7 @@
 use crate::error::{InternalError, InternalErrorTok, Res};
 use crate::token;
 use std::fmt;
+use std::rc::Rc;
 
 #[cfg(test)]
 mod test;
@@ -38,17 +39,15 @@ impl Binary {
 
 #[derive(Debug, Clone)]
 pub struct Leaf {
-    ident: String,
+    ident: Rc<String>,
 }
 
 impl Leaf {
-    pub fn destroy(self) -> String {
+    pub fn destroy(self) -> Rc<String> {
         self.ident
     }
-    pub fn string(&self) -> String {
-        // @todo no clone -> RC (but also the lexer should be aware...)
-        // or progressive number
-        self.ident.to_string()
+    pub fn string(&self) -> Rc<String> {
+        Rc::clone(&self.ident)
     }
 }
 
@@ -76,7 +75,7 @@ impl fmt::Display for Formula {
 }
 
 impl Formula {
-    pub fn new_leaf(ident: String) -> Formula {
+    pub fn new_leaf(ident: Rc<String>) -> Formula {
         Formula::Leaf(Leaf { ident })
     }
     pub fn new_binary(left: Formula, operator: token::Kind, right: Formula) -> Formula {
