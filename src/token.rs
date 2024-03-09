@@ -51,7 +51,7 @@ impl fmt::Display for Kind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
     kind: Kind,
-    literal: String, // @think: would it be better to have an ID with and HashMap instead?
+    literal: String, // @perf would it be better to have an ID with and HashMap instead?
     row: usize,
     col: usize,
 }

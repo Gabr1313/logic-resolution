@@ -132,18 +132,6 @@ mod test {
     use crate::lexer;
     use crate::token;
 
-    fn compare(pars: &mut Parser, expected: &[&str]) {
-        for &exp in expected {
-            let l = match pars.parse_formula() {
-                Ok(s) => format!("{s}"),
-                Err(s) => format!("{s}"),
-            };
-            if exp != l {
-                panic!("expected=`{exp}`\ngot     =`{l}`")
-            }
-        }
-    }
-
     #[test]
     fn test_parser() {
         let buffer = "
@@ -195,7 +183,16 @@ x <=> y => z | w & !v;
         ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
-        let mut parser = Parser::new(lex).unwrap();
-        compare(&mut parser, expected);
+        let mut pars = Parser::new(lex).unwrap();
+
+        for &exp in expected {
+            let l = match pars.parse_formula() {
+                Ok(s) => format!("{s}"),
+                Err(s) => format!("{s}"),
+            };
+            if exp != l {
+                panic!("expected=`{exp}`\ngot     =`{l}`")
+            }
+        }
     }
 }

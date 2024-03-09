@@ -44,7 +44,7 @@ impl Leaf {
         self.ident
     }
     pub fn string(&self) -> String {
-        // TODO: no clone -> RC (but also the lexer should be aware...)
+        // @todo no clone -> RC (but also the lexer should be aware...)
         // or progressive number
         self.ident.to_string()
     }
@@ -314,19 +314,6 @@ impl Formula {
 mod test {
     use crate::{lexer, parser::Parser, token};
 
-    fn compare_digest(pars: &mut Parser, expected: &[&str]) {
-        for &exp in expected {
-            // i suppose that the parser tests pass
-            let l = match pars.parse_formula().unwrap().digest() {
-                Ok(s) => format!("{s}"),
-                Err(s) => format!("{s}"),
-            };
-            if exp != l {
-                panic!("expected=`{exp}`\ngot     =`{l}`")
-            }
-        }
-    }
-
     #[test]
     fn test_digest() {
         let buffer = "
@@ -362,14 +349,11 @@ x | y => z;
         ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
-        let mut parser = Parser::new(lex).unwrap();
-        compare_digest(&mut parser, expected);
-    }
+        let mut pars = Parser::new(lex).unwrap();
 
-    fn compare_distribute(pars: &mut Parser, expected: &[&str]) {
         for &exp in expected {
             // i suppose that the parser tests pass
-            let l = match pars.parse_formula().unwrap().distribute() {
+            let l = match pars.parse_formula().unwrap().digest() {
                 Ok(s) => format!("{s}"),
                 Err(s) => format!("{s}"),
             };
@@ -404,7 +388,17 @@ a & (b | c | (d & e & (f | g)));
         ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
-        let mut parser = Parser::new(lex).unwrap();
-        compare_distribute(&mut parser, expected);
+
+        let mut pars = Parser::new(lex).unwrap();
+        for &exp in expected {
+            // i suppose that the parser tests pass
+            let l = match pars.parse_formula().unwrap().distribute() {
+                Ok(s) => format!("{s}"),
+                Err(s) => format!("{s}"),
+            };
+            if exp != l {
+                panic!("expected=`{exp}`\ngot     =`{l}`")
+            }
+        }
     }
 }

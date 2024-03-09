@@ -101,7 +101,7 @@ impl Lexer {
                 }
             },
             Some(b'a'..=b'z' | b'A'..=b'Z') => {
-                // TODO: save Identifier as a progressive number ?
+                // @todo save Identifier as a progressive number ?
                 // (compare string O(n_id), trie(s.len()) -> to the easiest)
                 self.skip_while(is_alphanumeric);
                 token::Kind::Identifier
@@ -156,16 +156,6 @@ mod test {
     use super::Lexer;
     use crate::token;
     use crate::error::{Res, InvalidTokenErr};
-
-    fn compare(lex: &mut Lexer, expected: &[Res<token::Token>]) {
-        for exp in expected {
-            let e = format!("{:?}", exp);
-            let l = format!("{:?}", lex.next_tok());
-            if e != l {
-                panic!("exptected=`{e}`, got=`{l}`")
-            }
-        }
-    }
 
     #[test]
     fn test_lexer() {
@@ -358,6 +348,13 @@ x <y
         ];
         let mut lex = Lexer::new();
         lex.load_bytes(buffer.to_string());
-        compare(&mut lex, expected);
+
+        for exp in expected {
+            let e = format!("{:?}", exp);
+            let l = format!("{:?}", lex.next_tok());
+            if e != l {
+                panic!("exptected=`{e}`, got=`{l}`")
+            }
+        }
     }
 }

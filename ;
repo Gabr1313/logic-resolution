@@ -23,11 +23,8 @@ impl Atom {
     }
 }
 
-/// sort: positive before negative, then lexological order
 pub struct Clauses {
-    // @pref would it be better to use HashSets?
-    // using a BTreeSet i should avoid duplicates
-    bt: BTreeSet<BTreeSet<Atom>>,
+    bt: BTreeSet<BTreeSet<Atom>>, // using a BTreeSet i should avoid duplicates
 }
 
 impl fmt::Display for Clauses {
@@ -77,33 +74,18 @@ impl Clauses {
     }
 
     pub fn prune(&mut self) {
-        let mut hm = HashMap::new();
+        let mut positive = HashMap::new();
+        let mut negative = HashMap::new();
         for v in &self.bt {
             for w in v {
                 match w {
-                    Atom::Positive(x) => hm
-                        .entry(x.clone()) // @todo not clone: Rc or use an ID instead of String
-                        .and_modify(|(b, _): &mut (bool, bool)| *b = true)
-                        .or_insert((true, false)),
-                    Atom::Negative(x) => hm
-                        .entry(x.clone()) // @todo not clone: Rc or use an ID instead of String
-                        .and_modify(|(_, b): &mut (bool, bool)| *b = true)
-                        .or_insert((false, true)),
-                };
-            }
-        }
-        self.bt.retain(|v| {
-            for w in v {
-                let b = match w {
-                    Atom::Positive(x) => hm[x].1,
-                    Atom::Negative(x) => hm[x].0,
-                };
-                if b == false {
-                    return false;
+                    Atom::Positive(x) => 
+                positive.entry(x)
+                    .and_modify(|vc: &mut Vec<_>| vc.push(w))
+                    .or_insert(vec![x]);
                 }
             }
-            true
-        });
+        }
     }
 
     fn add(&mut self, formula: ast::Formula) -> Res<()> {
@@ -152,7 +134,7 @@ impl Clauses {
             ast::Formula::Unary(x) => {
                 debug_assert!(x.operator() == token::Kind::Not);
                 if let ast::Formula::Leaf(x) = x.right() {
-                    // pruning: it is useless to have a clause like {!x, x, ...}
+                    // pruning
                     if bt.contains(&Atom::Positive(x.string())) {
                         false
                     } else {
@@ -166,7 +148,7 @@ impl Clauses {
                 }
             }
             ast::Formula::Leaf(x) => {
-                // pruning: it is useless to have a clause like {!x, x, ...}
+                // pruning
                 if bt.contains(&Atom::Negative(x.string())) {
                     false
                 } else {
@@ -188,6 +170,19 @@ impl Clauses {
 mod test {
     use super::Clauses;
     use crate::{ast, lexer, parser, token};
+
+    fn compare(pars: &mut parser::Parser, expected: &[&str]) {
+        for &exp in expected {
+            let c = Clauses::new(pars.parse_formula().unwrap().distribute().unwrap());
+            let s = match c {
+                Ok(c) => c.to_string(),
+                Err(c) => c.to_string(),
+            };
+            if exp != s {
+                panic!("expected=`{exp}`\ngot     =`{s}`")
+            }
+        }
+    }
 
     #[test]
     fn test_clauses() {
@@ -224,17 +219,26 @@ a & (b | c | (d & e & (f | g)));
         ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
-        let mut pars = parser::Parser::new(lex).unwrap();
+        let mut parser = parser::Parser::new(lex).unwrap();
+        compare(&mut parser, expected);
+    }
 
-        for &exp in expected {
-            let c = Clauses::new(pars.parse_formula().unwrap().distribute().unwrap());
-            let s = match c {
-                Ok(c) => c.to_string(),
-                Err(c) => c.to_string(),
-            };
-            if exp != s {
-                panic!("expected=`{exp}`\ngot     =`{s}`")
+    fn compare_merge(pars: &mut parser::Parser, expected: &str) {
+        let mut v = Vec::new();
+        loop {
+            match pars.parse_formula() {
+                Ok(ast::Formula::Eof) => break,
+                Ok(parsed) => {
+                    let c = Clauses::new(parsed.distribute().unwrap()).unwrap();
+                    v.push(c);
+                }
+                Err(err) => panic!("{err}"),
             }
+        }
+        let t = Clauses::merge(v);
+        let s = t.to_string();
+        if expected != s {
+            panic!("expected=`{expected}`\ngot     =`{s}`")
         }
     }
 
@@ -262,66 +266,7 @@ b | a;
         let expected = "{{a}, {a, b}, {b}}";
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
-        let mut pars = parser::Parser::new(lex).unwrap();
-
-        let mut v = Vec::new();
-        loop {
-            match pars.parse_formula() {
-                Ok(ast::Formula::Eof) => break,
-                Ok(parsed) => {
-                    let c = Clauses::new(parsed.distribute().unwrap()).unwrap();
-                    v.push(c);
-                }
-                Err(err) => panic!("{err}"),
-            }
-        }
-        let t = Clauses::merge(v);
-        let s = t.to_string();
-        if expected != s {
-            panic!("expected=`{expected}`\ngot     =`{s}`")
-        }
-    }
-
-    #[test]
-    fn test_prune() {
-        let buffer = "
-a | b;
-b | c;
-c | !a;
-!c | a;
-        ";
-        // i suppose that the lexer tests pass
-        let mut lex_test = lexer::Lexer::new();
-        lex_test.load_bytes(buffer.to_string());
-        let mut tokens = Vec::new();
-        while let Ok(t) = lex_test.next_tok() {
-            if t.kind() == token::Kind::Eof {
-                break;
-            }
-            tokens.push(Some(t));
-        }
-
-        let expected = "{{a, !c}, {c, !a}}";
-        let mut lex = lexer::Lexer::new();
-        lex.load_bytes(buffer.to_string());
-        let mut pars = parser::Parser::new(lex).unwrap();
-
-        let mut v = Vec::new();
-        loop {
-            match pars.parse_formula() {
-                Ok(ast::Formula::Eof) => break,
-                Ok(parsed) => {
-                    let c = Clauses::new(parsed.distribute().unwrap()).unwrap();
-                    v.push(c);
-                }
-                Err(err) => panic!("{err}"),
-            }
-        }
-        let mut t = Clauses::merge(v);
-        t.prune();
-        let s = t.to_string();
-        if expected != s {
-            panic!("expected=`{expected}`\ngot     =`{s}`")
-        }
+        let mut parser = parser::Parser::new(lex).unwrap();
+        compare_merge(&mut parser, expected);
     }
 }
