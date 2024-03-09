@@ -1,7 +1,9 @@
+use crate::error::{InternalError, InternalErrorTok, Res};
+use crate::token;
 use std::fmt;
 
-use crate::token;
-use crate::error::{Res, InternalErrorTok, InternalError};
+#[cfg(test)]
+mod test;
 
 #[derive(Debug, Clone)]
 pub struct Unary {
@@ -115,21 +117,15 @@ impl Formula {
             Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 match operator {
-                    token::Kind::And => Formula::new_binary(
-                        left.digest()?,
-                        token::Kind::And,
-                        right.digest()?,
-                    ),
-                    token::Kind::Or => Formula::new_binary(
-                        left.digest()?,
-                        token::Kind::Or,
-                        right.digest()?,
-                    ),
-                    token::Kind::Implies => Formula::new_binary(
-                        left.negate_digest()?,
-                        token::Kind::Or,
-                        right.digest()?,
-                    ),
+                    token::Kind::And => {
+                        Formula::new_binary(left.digest()?, token::Kind::And, right.digest()?)
+                    }
+                    token::Kind::Or => {
+                        Formula::new_binary(left.digest()?, token::Kind::Or, right.digest()?)
+                    }
+                    token::Kind::Implies => {
+                        Formula::new_binary(left.negate_digest()?, token::Kind::Or, right.digest()?)
+                    }
                     token::Kind::Equiv => Formula::new_binary(
                         Formula::new_binary(
                             left.clone().digest()?,
@@ -307,98 +303,5 @@ impl Formula {
         } else {
             return Err(InternalError::new("assert right.is_and()".to_string()));
         })
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{lexer, parser::Parser, token};
-
-    #[test]
-    fn test_digest() {
-        let buffer = "
-~x;
-x & y;
-x | y;
-x => y;
-x <=> y;
-~x => ~y;
-x <=> y => z;
-x | y => z;
-";
-        let expected: &[&str] = &[
-            "(~x)",
-            "(x & y)",
-            "(x | y)",
-            "((~x) | y)",
-            "((x & y) | ((~x) & (~y)))",
-            "(x | (~y))",
-            "((x & ((~y) | z)) | ((~x) & (y & (~z))))",
-            "(((~x) & (~y)) | z)",
-        ];
-
-        // i suppose that the lexer tests pass
-        let mut lex_test = lexer::Lexer::new();
-        lex_test.load_bytes(buffer.to_string());
-        let mut tokens = Vec::new();
-        while let Ok(t) = lex_test.next_tok() {
-            if t.kind() == token::Kind::Eof {
-                break;
-            }
-            tokens.push(Some(t));
-        }
-        let mut lex = lexer::Lexer::new();
-        lex.load_bytes(buffer.to_string());
-        let mut pars = Parser::new(lex).unwrap();
-
-        for &exp in expected {
-            // i suppose that the parser tests pass
-            let l = match pars.parse_formula().unwrap().digest() {
-                Ok(s) => format!("{s}"),
-                Err(s) => format!("{s}"),
-            };
-            if exp != l {
-                panic!("expected=`{exp}`\ngot     =`{l}`")
-            }
-        }
-    }
-
-    #[test]
-    fn test_distribute() {
-        let buffer = "
-x <=> y;
-a | (b & c & (d | e | (f & g)));
-a & (b | c | (d & e & (f | g)));
-";
-        let expected: &[&str] = &[
-            "(((x | (~x)) & (x | (~y))) & ((y | (~x)) & (y | (~y))))",
-            "(((a | b) & (a | c)) & ((a | ((d | e) | f)) & (a | ((d | e) | g))))",
-            "(a & ((((b | c) | d) & ((b | c) | e)) & ((b | c) | (f | g))))",
-        ];
-
-        // i suppose that the lexer tests pass
-        let mut lex_test = lexer::Lexer::new();
-        lex_test.load_bytes(buffer.to_string());
-        let mut tokens = Vec::new();
-        while let Ok(t) = lex_test.next_tok() {
-            if t.kind() == token::Kind::Eof {
-                break;
-            }
-            tokens.push(Some(t));
-        }
-        let mut lex = lexer::Lexer::new();
-        lex.load_bytes(buffer.to_string());
-
-        let mut pars = Parser::new(lex).unwrap();
-        for &exp in expected {
-            // i suppose that the parser tests pass
-            let l = match pars.parse_formula().unwrap().distribute() {
-                Ok(s) => format!("{s}"),
-                Err(s) => format!("{s}"),
-            };
-            if exp != l {
-                panic!("expected=`{exp}`\ngot     =`{l}`")
-            }
-        }
     }
 }

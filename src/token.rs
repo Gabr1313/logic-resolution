@@ -28,23 +28,28 @@ impl Kind {
             Kind::Invalid | Kind::Eof => 1,
         }
     }
+
+    // if you update somthing here, please, update the lexer too!
+    pub fn as_str(&self) -> &str {
+        match &self {
+            Kind::Invalid => "INVALID",
+            Kind::Eof => "EOF",
+            Kind::Identifier => "IDENTIFIER",
+            Kind::ParenL => "(",
+            Kind::ParenR => ")",
+            Kind::And => "&",
+            Kind::Or => "|",
+            Kind::Not => "~",
+            Kind::Implies => "=>",
+            Kind::Equiv => "<=>",
+            Kind::SemiColon => ";",
+        }
+    }
 }
 
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            Kind::Invalid => write!(f, "INVALID",),
-            Kind::Eof => write!(f, "EOF",),
-            Kind::Identifier => write!(f, "IDENTIFIER",),
-            Kind::ParenL => write!(f, "(",),
-            Kind::ParenR => write!(f, ")",),
-            Kind::And => write!(f, "&",),
-            Kind::Or => write!(f, "|",),
-            Kind::Not => write!(f, "~",),
-            Kind::Implies => write!(f, "=>",),
-            Kind::Equiv => write!(f, "<=>",),
-            Kind::SemiColon => write!(f, ";",),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -90,4 +95,3 @@ impl Token {
         self.kind.precedence()
     }
 }
-

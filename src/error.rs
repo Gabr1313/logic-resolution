@@ -1,6 +1,6 @@
+use crate::token;
 use std::{error::Error, fmt};
 
-use crate::token;
 pub type Res<T> = std::result::Result<T, Box<dyn Error>>;
 
 #[derive(Debug)]

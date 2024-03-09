@@ -1,10 +1,9 @@
-use std::io::{self, Write};
-
 use crate::ast;
 use crate::clause;
 use crate::error::Res;
 use crate::lexer;
 use crate::parser;
+use std::io::{self, Write};
 
 const PROMPT: &str = ">> ";
 
