@@ -317,15 +317,26 @@ mod test {
     #[test]
     fn test_digest() {
         let buffer = "
-!x;
+~x;
 x & y;
 x | y;
 x => y;
 x <=> y;
-!x => !y;
+~x => ~y;
 x <=> y => z;
 x | y => z;
 ";
+        let expected: &[&str] = &[
+            "(~x)",
+            "(x & y)",
+            "(x | y)",
+            "((~x) | y)",
+            "((x & y) | ((~x) & (~y)))",
+            "(x | (~y))",
+            "((x & ((~y) | z)) | ((~x) & (y & (~z))))",
+            "(((~x) & (~y)) | z)",
+        ];
+
         // i suppose that the lexer tests pass
         let mut lex_test = lexer::Lexer::new();
         lex_test.load_bytes(buffer.to_string());
@@ -336,17 +347,6 @@ x | y => z;
             }
             tokens.push(Some(t));
         }
-
-        let expected: &[&str] = &[
-            "(!x)",
-            "(x & y)",
-            "(x | y)",
-            "((!x) | y)",
-            "((x & y) | ((!x) & (!y)))",
-            "(x | (!y))",
-            "((x & ((!y) | z)) | ((!x) & (y & (!z))))",
-            "(((!x) & (!y)) | z)",
-        ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
         let mut pars = Parser::new(lex).unwrap();
@@ -370,6 +370,12 @@ x <=> y;
 a | (b & c & (d | e | (f & g)));
 a & (b | c | (d & e & (f | g)));
 ";
+        let expected: &[&str] = &[
+            "(((x | (~x)) & (x | (~y))) & ((y | (~x)) & (y | (~y))))",
+            "(((a | b) & (a | c)) & ((a | ((d | e) | f)) & (a | ((d | e) | g))))",
+            "(a & ((((b | c) | d) & ((b | c) | e)) & ((b | c) | (f | g))))",
+        ];
+
         // i suppose that the lexer tests pass
         let mut lex_test = lexer::Lexer::new();
         lex_test.load_bytes(buffer.to_string());
@@ -380,12 +386,6 @@ a & (b | c | (d & e & (f | g)));
             }
             tokens.push(Some(t));
         }
-
-        let expected: &[&str] = &[
-            "(((x | (!x)) & (x | (!y))) & ((y | (!x)) & (y | (!y))))",
-            "(((a | b) & (a | c)) & ((a | ((d | e) | f)) & (a | ((d | e) | g))))",
-            "(a & ((((b | c) | d) & ((b | c) | e)) & ((b | c) | (f | g))))",
-        ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
 

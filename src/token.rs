@@ -40,7 +40,7 @@ impl fmt::Display for Kind {
             Kind::ParenR => write!(f, ")",),
             Kind::And => write!(f, "&",),
             Kind::Or => write!(f, "|",),
-            Kind::Not => write!(f, "!",),
+            Kind::Not => write!(f, "~",),
             Kind::Implies => write!(f, "=>",),
             Kind::Equiv => write!(f, "<=>",),
             Kind::SemiColon => write!(f, ";",),

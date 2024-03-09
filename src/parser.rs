@@ -1,4 +1,4 @@
-use crate::error::{Res, ParseErr};
+use crate::error::{ParseErr, Res};
 use crate::{ast, lexer, token};
 
 #[derive(Debug)]
@@ -136,7 +136,7 @@ mod test {
     fn test_parser() {
         let buffer = "
 x;
-!x;
+~x;
 x => y;
 x | y;
 x | y | z;
@@ -145,12 +145,34 @@ x | y | z;
 x & y;
 x <=> y;
 ((x | y)) & z;
-x <=> y => z | w & !v;
-!x & y | z => w <=> v;
-!x | (y | z) <=> !w => v & b;
+x <=> y => z | w & ~v;
+~x & y | z => w <=> v;
+~x | (y | z) <=> ~w => v & b;
+~(a&b&d);
 =>
 (x | y;
 ";
+        let expected: &[&str] = &[
+            "x",
+            "(~x)",
+            "(x => y)",
+            "(x | y)",
+            "((x | y) | z)",
+            "((x | y) | z)",
+            "(x | (y | z))",
+            "(x & y)",
+            "(x <=> y)",
+            "((x | y) & z)",
+            "(x <=> (y => (z | (w & (~v)))))",
+            "(((((~x) & y) | z) => w) <=> v)",
+            "(((~x) | (y | z)) <=> ((~w) => (v & b)))",
+            "(~((a & b) & d))",
+            "Parse error [16:1]: got=`=>` (Implies): not the beginning of a formula",
+            "Parse error [17:7]: got=`;` (SemiColon): expected `)`",
+            "Parse error [17:7]: got=`;` (SemiColon): not the beginning of a formula",
+            "EOF",
+        ];
+
         // i suppose that the lexer tests pass
         let mut lex_test = lexer::Lexer::new();
         lex_test.load_bytes(buffer.to_string());
@@ -161,26 +183,6 @@ x <=> y => z | w & !v;
             }
             tokens.push(Some(t));
         }
-
-        let expected: &[&str] = &[
-            "x",
-            "(!x)",
-            "(x => y)",
-            "(x | y)",
-            "((x | y) | z)",
-            "((x | y) | z)",
-            "(x | (y | z))",
-            "(x & y)",
-            "(x <=> y)",
-            "((x | y) & z)",
-            "(x <=> (y => (z | (w & (!v)))))",
-            "(((((!x) & y) | z) => w) <=> v)",
-            "(((!x) | (y | z)) <=> ((!w) => (v & b)))",
-            "Parse error [15:1]: got=`=>` (Implies): not the beginning of a formula",
-            "Parse error [16:7]: got=`;` (SemiColon): expected `)`",
-            "Parse error [16:7]: got=`;` (SemiColon): not the beginning of a formula",
-            "EOF",
-        ];
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buffer.to_string());
         let mut pars = Parser::new(lex).unwrap();

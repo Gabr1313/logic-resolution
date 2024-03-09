@@ -70,7 +70,7 @@ impl Lexer {
                 self.skip_ch();
                 token::Kind::Or
             }
-            Some(b'!') => {
+            Some(b'~') => {
                 self.skip_ch();
                 token::Kind::Not
             }
@@ -164,7 +164,7 @@ x => y
 x| y;
 x & y
 x <=>y   ;
-!x ;
+~x ;
 x&y
 (x | y) & z
 is_al_num <=> Is_Al_NuM
@@ -247,7 +247,7 @@ x <y
                 5,
                 10,
             )),
-            Ok(token::Token::new(token::Kind::Not, "!".to_string(), 6, 1)),
+            Ok(token::Token::new(token::Kind::Not, "~".to_string(), 6, 1)),
             Ok(token::Token::new(
                 token::Kind::Identifier,
                 "x".to_string(),
