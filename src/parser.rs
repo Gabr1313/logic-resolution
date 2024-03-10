@@ -1,11 +1,11 @@
-use crate::error::{ParseErr, Res};
+use crate::error::{Execute, Feof, ParseErr, Res};
 use crate::{ast, lexer, token};
 
 #[cfg(test)]
-mod test; 
+mod test;
 
 #[derive(Debug)]
-pub struct Parser{
+pub struct Parser {
     lex: lexer::Lexer,
     curr_tok: Option<token::Token>,
     peek_tok: Option<token::Token>,
@@ -36,14 +36,17 @@ impl Parser {
     }
 
     fn curr_tok(&self) -> &token::Token {
-        // should never panic because None is only the initial value
-        self.curr_tok.as_ref().unwrap()
+        self.curr_tok
+            .as_ref()
+            .expect("None should be only the intial value")
     }
 
     /// returns the previous token
     fn skip_tok(&mut self) -> Res<token::Token> {
-        // should never panic because None is only the initial value
-        let tok = self.curr_tok.take().unwrap();
+        let tok = self
+            .curr_tok
+            .take()
+            .expect("None should be only the intial value");
         self.curr_tok = self.peek_tok.take();
         self.peek_tok = Some(self.lex.next_tok()?);
         Ok(tok)
@@ -52,8 +55,13 @@ impl Parser {
     /// it skips only the first token if it is invalid
     /// it does not skip what is there instead of `;`
     pub fn parse_formula(&mut self) -> Res<ast::Formula> {
-        if self.curr_tok().kind() == token::Kind::Eof {
-            return Ok(ast::Formula::Eof);
+        match self.curr_tok().kind() {
+            token::Kind::Eof => return Err(Feof::new()),
+            token::Kind::Bang => {
+                self.skip_tok()?;
+                return Err(Execute::new());
+            }
+            _ => {}
         }
         let stat = self.recursive_pratt(0)?;
         if self.curr_tok().kind() != token::Kind::SemiColon {

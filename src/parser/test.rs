@@ -40,7 +40,7 @@ x <=> y => z | w & ~v;
         "Parse error [16:1]: got=`=>` (Implies): not the beginning of a formula",
         "Parse error [17:7]: got=`;` (SemiColon): expected `)`",
         "Parse error [17:7]: got=`;` (SemiColon): not the beginning of a formula",
-        "EOF",
+        "Found end of file",
     ];
 
     // i suppose that the lexer tests pass

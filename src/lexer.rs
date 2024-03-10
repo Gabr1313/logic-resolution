@@ -83,6 +83,10 @@ impl Lexer {
                 self.skip_ch();
                 token::Kind::Not
             }
+            Some(b'!') => {
+                self.skip_ch();
+                token::Kind::Bang
+            }
             Some(b'=') => match self.skip_ch() {
                 Some(b'>') => {
                     self.skip_ch();

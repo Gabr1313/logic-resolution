@@ -13,6 +13,7 @@ pub enum Kind {
     Implies,
     Equiv,
     SemiColon,
+    Bang,
 }
 
 impl Kind {
@@ -25,7 +26,8 @@ impl Kind {
             Kind::Implies => 4,
             Kind::Equiv => 3,
             Kind::SemiColon | Kind::Identifier | Kind::ParenL | Kind::ParenR => 2,
-            Kind::Invalid | Kind::Eof => 1,
+            // @todo tests
+            Kind::Bang | Kind::Invalid | Kind::Eof => 1,
         }
     }
 
@@ -43,6 +45,7 @@ impl Kind {
             Kind::Implies => "=>",
             Kind::Equiv => "<=>",
             Kind::SemiColon => ";",
+            Kind::Bang => "!",
         }
     }
 }

@@ -1,5 +1,5 @@
-use super::Clauses;
-use crate::{ast, lexer, parser, token};
+use super::SetClauses;
+use crate::{lexer, parser, token};
 
 #[test]
 fn test_clauses() {
@@ -39,7 +39,7 @@ a & (b | c | (d & e & (f | g)));
     let mut pars = parser::Parser::new(lex).unwrap();
 
     for &exp in expected {
-        let c = Clauses::new(pars.parse_formula().unwrap().distribute().unwrap());
+        let c = SetClauses::new(pars.parse_formula().unwrap().distribute().unwrap());
         let s = match c {
             Ok(c) => c.to_string(),
             Err(c) => c.to_string(),
@@ -81,15 +81,15 @@ b | a;
 
     let mut v = Vec::new();
     loop {
-        match pars.parse_formula().unwrap() {
-            ast::Formula::Eof => break,
-            parsed => {
-                let c = Clauses::new(parsed.distribute().unwrap()).unwrap();
+        match pars.parse_formula() {
+            Ok(parsed) => {
+                let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
                 v.push(c);
             }
+            Err(_) => break, // shoudl be only eof
         }
     }
-    let t = Clauses::merge(v);
+    let t = SetClauses::merge(v);
     let s = t.to_string();
     if expected != s {
         panic!("expected=`{expected}`\ngot     =`{s}`")
@@ -117,15 +117,15 @@ fn test_prune() {
 
     let mut v = Vec::new();
     loop {
-        match pars.parse_formula().unwrap() {
-            ast::Formula::Eof => break,
-            parsed => {
-                let c = Clauses::new(parsed.distribute().unwrap()).unwrap();
+        match pars.parse_formula() {
+            Ok(parsed) => {
+                let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
                 v.push(c);
             }
+            Err(_) => break, // shoudl be only eof
         }
     }
-    let mut t = Clauses::merge(v);
+    let mut t = SetClauses::merge(v);
     t.prune();
     let s = t.to_string();
     if expected != s {
@@ -159,17 +159,68 @@ fn test_find_box() {
 
         let mut v = Vec::new();
         loop {
-            match pars.parse_formula().unwrap() {
-                ast::Formula::Eof => break,
-                parsed => {
-                    let c = Clauses::new(parsed.distribute().unwrap()).unwrap();
+            match pars.parse_formula() {
+                Ok(parsed) => {
+                    let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
                     v.push(c);
                 }
+                Err(_) => break, // shoudl be only eof
             }
         }
-        let mut t = Clauses::merge(v);
+        let mut t = SetClauses::merge(v);
         if *exp != t.find_box() {
             panic!("expected=`{exp}`\ngot     =`{}`", !exp)
+        }
+    }
+}
+
+#[test]
+fn test_trace_from_box() {
+    let tests = &[
+        ("a;", ""),
+        ("a;~a;", "{~a}, {a} -> {}"),
+        (
+            "(~B|C) & ~(A&~B) & (A|((B|C)&~C)); ~(A&B&C);",
+            "{A, ~C}, {~A, ~B, ~C} -> {~B, ~C}
+{B, ~A}, {A, ~C} -> {B, ~C}
+{~B, ~C}, {B, ~C} -> {~C}
+{B, ~A}, {A, B, C} -> {B, C}
+{C, ~B}, {B, C} -> {C}
+{~C}, {C} -> {}",
+        ),
+        ("(~(B&C)) & (A=>(C<=>B)) & (~C=>A) & (~B|(A=>~C));", ""),
+    ];
+
+    for (buf, exp) in tests {
+        let mut lex_test = lexer::Lexer::new();
+        lex_test.load_bytes(buf.to_string());
+        let mut tokens = Vec::new();
+        while let Ok(t) = lex_test.next_tok() {
+            if t.kind() == token::Kind::Eof {
+                break;
+            }
+            tokens.push(Some(t));
+        }
+
+        let mut lex = lexer::Lexer::new();
+        lex.load_bytes(buf.to_string());
+        let mut pars = parser::Parser::new(lex).unwrap();
+
+        let mut v = Vec::new();
+        loop {
+            match pars.parse_formula() {
+                Ok(parsed) => {
+                    let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
+                    v.push(c);
+                }
+                Err(_) => break, // shoudl be only eof
+            }
+        }
+        let mut t = SetClauses::merge(v);
+        t.find_box();
+        let trace = t.trace_from_box();
+        if *exp != &trace {
+            panic!("expected=`{exp}`\ngot     =`{}`", trace)
         }
     }
 }

@@ -56,7 +56,6 @@ pub enum Formula {
     Unary(Unary),
     Binary(Binary),
     Leaf(Leaf),
-    Eof,
 }
 
 impl fmt::Display for Formula {
@@ -68,7 +67,6 @@ impl fmt::Display for Formula {
                 Formula::Leaf(l) => l.ident.to_string(),
                 Formula::Unary(u) => format!("({}{})", u.operator, u.right),
                 Formula::Binary(b) => format!("({} {} {})", b.left, b.operator, b.right),
-                Formula::Eof => "EOF".to_string(),
             }
         )
     }
@@ -147,12 +145,6 @@ impl Formula {
                 }
             }
             Formula::Leaf(_) => self,
-            Formula::Eof => {
-                return Err(InternalErrorTok::new(
-                    token::Kind::Eof,
-                    "should not be in ast".to_string(),
-                ))
-            }
         })
     }
 
@@ -202,12 +194,6 @@ impl Formula {
                 }
             }
             Formula::Leaf(_) => Formula::new_unary(token::Kind::Not, self),
-            Formula::Eof => {
-                return Err(InternalErrorTok::new(
-                    token::Kind::Eof,
-                    "should not be in ast".to_string(),
-                ))
-            }
         })
     }
 
@@ -249,12 +235,6 @@ impl Formula {
                 }
             }
             Formula::Leaf(_) => self,
-            Formula::Eof => {
-                return Err(InternalErrorTok::new(
-                    token::Kind::Eof,
-                    "should not be in ast".to_string(),
-                ))
-            }
         })
     }
 

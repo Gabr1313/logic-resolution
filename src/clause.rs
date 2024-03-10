@@ -1,15 +1,14 @@
 use crate::ast;
-use crate::error::{InternalError, InternalErrorTok, Res};
+use crate::error::{InternalError, Res};
 use crate::token;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 #[cfg(test)]
 mod test;
 
 #[derive(Eq, Hash, PartialEq, Ord, PartialOrd, Clone)]
-// @perf comparing 2 atoms is so slow...
 pub enum Atom {
     Positive(Rc<String>),
     Negative(Rc<String>),
@@ -30,56 +29,71 @@ impl Atom {
     }
 }
 
-/// sort: positive before negative, then lexological order
-#[derive(Default)]
-pub struct Clauses {
-    // @perf would it be better to use HashSets? 
-    //       -> problem: print in tests would not be deterministic
-    // using a BTreeSet i should avoid duplicates
-    bt: BTreeSet<BTreeSet<Atom>>,
+#[derive(Ord, PartialOrd, Eq, PartialEq, Clone)]
+pub struct Clause {
+    c: BTreeSet<Atom>,
 }
 
-impl fmt::Display for Clauses {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = String::new();
-        s.push('{');
-        for v in &self.bt {
-            s.push('{');
-            for w in v {
-                match w {
-                    Atom::Positive(x) => s.push_str(&x),
-                    Atom::Negative(x) => {
-                        s.push_str(token::Kind::Not.as_str());
-                        s.push_str(&x);
-                    }
-                }
-                s.push_str(", ");
-            }
-            if v.len() > 0 {
-                s.truncate(s.len() - 2);
-            }
-            s.push_str("}, ");
-        }
-        if self.bt.len() > 0 {
-            s.truncate(s.len() - 2);
-        }
-        s.push('}');
-        write!(f, "{}", s,)
+impl Clause {
+    fn new() -> Clause {
+        Clause { c: BTreeSet::new() }
     }
 }
 
-impl Clauses {
-    pub fn new(formula: ast::Formula) -> Res<Clauses> {
-        let mut c = Clauses {
-            bt: BTreeSet::new(),
+impl From<BTreeSet<Atom>> for Clause {
+    fn from(c: BTreeSet<Atom>) -> Clause {
+        Clause { c }
+    }
+}
+
+impl fmt::Display for Clause {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = self
+            .c
+            .iter()
+            .map(|x| match x {
+                Atom::Positive(x) => format!("{x}"),
+                Atom::Negative(x) => format!("{}{x}", token::Kind::Not),
+            })
+            .reduce(|acc, s| format!("{acc}, {s}"))
+            .unwrap_or_default();
+        write!(f, "{{{s}}}",)
+    }
+}
+
+/// sort: positive before negative, then lexological order
+#[derive(Default, Clone)]
+pub struct SetClauses {
+    // @perf would it be better to use HashSets?
+    //       -> problem: print in tests would not be deterministic
+    // using a BTreeSet i should avoid duplicates
+    bt: BTreeMap<Rc<Clause>, Option<(Weak<Clause>, Weak<Clause>)>>,
+}
+
+impl fmt::Display for SetClauses {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = self
+            .bt
+            .iter()
+            .map(|x| x.0.to_string())
+            .reduce(|acc, s| format!("{acc}, {s}"))
+            .unwrap_or_default();
+        write!(f, "{{{s}}}",)
+    }
+}
+
+impl SetClauses {
+    pub fn new(formula: ast::Formula) -> Res<SetClauses> {
+        let mut c = SetClauses {
+            bt: BTreeMap::new(),
         };
         c.append_formula(formula)?;
         Ok(c)
     }
 
-    pub fn merge(clauses: Vec<Clauses>) -> Clauses {
-        Clauses {
-            bt: clauses.into_iter().fold(BTreeSet::new(), |mut acc, x| {
+    pub fn merge(clauses: Vec<SetClauses>) -> SetClauses {
+        SetClauses {
+            bt: clauses.into_iter().fold(BTreeMap::new(), |mut acc, x| {
                 acc.extend(x.bt);
                 acc
             }),
@@ -92,11 +106,12 @@ impl Clauses {
             ast::Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 if operator == token::Kind::Or {
-                    let mut bt = BTreeSet::new();
+                    let mut bt = Clause::new();
                     // compiler does not evaluate the second expression if the first one is false
-                    if Clauses::append_atom(&mut bt, left)? && Clauses::append_atom(&mut bt, right)?
+                    if SetClauses::append_atom(&mut bt, left)?
+                        && SetClauses::append_atom(&mut bt, right)?
                     {
-                        self.bt.insert(bt);
+                        self.bt.insert(Rc::new(bt), None);
                     }
                 } else {
                     debug_assert!(operator == token::Kind::And);
@@ -105,37 +120,32 @@ impl Clauses {
                 }
             }
             ast::Formula::Unary(_) | ast::Formula::Leaf(_) => {
-                let mut bt = BTreeSet::new();
-                if Clauses::append_atom(&mut bt, formula)? {
-                    self.bt.insert(bt);
+                let mut bt = Clause::new();
+                if SetClauses::append_atom(&mut bt, formula)? {
+                    self.bt.insert(Rc::new(bt), None);
                 }
-            }
-            ast::Formula::Eof => {
-                return Err(InternalErrorTok::new(
-                    token::Kind::Eof,
-                    "should not be in ast".to_string(),
-                ))
             }
         };
         Ok(())
     }
 
-    fn append_atom(bt: &mut BTreeSet<Atom>, f: ast::Formula) -> Res<bool> {
+    fn append_atom(bt: &mut Clause, f: ast::Formula) -> Res<bool> {
         Ok(match f {
             ast::Formula::Binary(x) => {
                 let (left, operator, right) = x.destroy();
                 debug_assert!(operator == token::Kind::Or);
                 // compiler does not evaluate the second expression if the first one is false
-                Clauses::append_atom(bt, left)? && Clauses::append_atom(bt, right)?
+                SetClauses::append_atom(bt, left)? && SetClauses::append_atom(bt, right)?
             }
             ast::Formula::Unary(x) => {
                 debug_assert!(x.operator() == token::Kind::Not);
                 if let ast::Formula::Leaf(x) = x.right() {
+                    // @perf comparing 2 atoms is slow: it compares inner values of Rc (String)
                     // pruning: it is useless to have a clause like {!x, x, ...}
-                    if bt.contains(&Atom::Positive(x.string())) {
+                    if bt.c.contains(&Atom::Positive(x.string())) {
                         false
                     } else {
-                        bt.insert(Atom::Negative(x.string()));
+                        bt.c.insert(Atom::Negative(x.string()));
                         true
                     }
                 } else {
@@ -146,26 +156,20 @@ impl Clauses {
             }
             ast::Formula::Leaf(x) => {
                 // pruning: it is useless to have a clause like {!x, x, ...}
-                if bt.contains(&Atom::Negative(x.string())) {
+                if bt.c.contains(&Atom::Negative(x.string())) {
                     false
                 } else {
-                    bt.insert(Atom::Positive(x.string()));
+                    bt.c.insert(Atom::Positive(x.string()));
                     true
                 }
-            }
-            ast::Formula::Eof => {
-                return Err(InternalErrorTok::new(
-                    token::Kind::Eof,
-                    "should not be in ast".to_string(),
-                ))
             }
         })
     }
 
     fn prune(&mut self) {
         let mut hm = HashMap::new();
-        for v in &self.bt {
-            for w in v {
+        for (v, _) in &self.bt {
+            for w in &v.as_ref().c {
                 match w {
                     Atom::Positive(x) => hm
                         .entry(Rc::clone(x))
@@ -178,8 +182,8 @@ impl Clauses {
                 };
             }
         }
-        self.bt.retain(|v| {
-            for w in v {
+        self.bt.retain(|v, _| {
+            for w in &v.as_ref().c {
                 let b = match w {
                     Atom::Positive(x) => hm[x].1,
                     Atom::Negative(x) => hm[x].0,
@@ -192,45 +196,44 @@ impl Clauses {
         });
     }
 
-    // @todo Backtracking
     // @todo? Horn
-    // @design would it be better to pass &self and self.clone() ?
-    /// self.prune() is called here, it is unefficient to also call it before
     pub fn find_box(&mut self) -> bool {
         self.prune();
-        let empty = BTreeSet::new();
+        let empty = Clause::new();
         let mut previous_len = 0;
         while previous_len != self.bt.len() {
             previous_len = self.bt.len();
             self.square();
-            if self.bt.contains(&empty) {
+            if self.bt.contains_key(&empty) {
                 return true;
             }
         }
         false
     }
 
+    // @todo break when box is found
     fn square(&mut self) {
-        let mut new_clauses = Clauses::default();
+        let mut new_clauses = SetClauses::default();
         for (i, c1) in self.bt.iter().enumerate() {
             // is skip efficient? magic...
             for c2 in self.bt.iter().skip(i) {
-                new_clauses.extend_solve(c1, c2);
+                new_clauses.extend_solve(Rc::clone(c1.0), Rc::clone(c2.0), self);
             }
         }
         self.bt.extend(new_clauses.bt);
     }
 
-    fn extend_solve(&mut self, c1: &BTreeSet<Atom>, c2: &BTreeSet<Atom>) {
-        let (c1, c2) = if c1.len() < c2.len() {
+    // @todo break when box is found
+    fn extend_solve(&mut self, c1: Rc<Clause>, c2: Rc<Clause>, parent: &SetClauses) {
+        let (c1, c2) = if c1.c.len() < c2.c.len() {
             (c1, c2)
         } else {
             (c2, c1)
         };
         let mut pp = None;
-        for atom in c1 {
+        for atom in &c1.as_ref().c {
             let opposite = atom.opposite();
-            if c2.contains(&opposite) {
+            if c2.c.contains(&opposite) {
                 match pp {
                     // pruning: it is useless to have a clause like {!x, x, ...}
                     Some(_) => return,
@@ -242,13 +245,56 @@ impl Clauses {
             Some(x) => x,
             None => return,
         };
-        let new_clause = c1
-            .iter()
-            .filter(|x| *x != atom)
-            .chain(c2.iter().filter(|x| *x != &opposite))
-            .map(|x| x.clone())
-            .collect();
+        let new_clause: Clause =
+            c1.c.iter()
+                .filter(|x| *x != atom)
+                .chain(c2.c.iter().filter(|x| *x != &opposite))
+                .map(|x| x.clone())
+                .collect::<BTreeSet<Atom>>()
+                .into();
 
-        self.bt.insert(new_clause);
+        if !parent.bt.contains_key(&new_clause) {
+            self.bt.insert(
+                Rc::new(new_clause),
+                Some((Rc::downgrade(&c1), Rc::downgrade(&c2))),
+            );
+        }
+    }
+
+    pub fn trace_from_box(&self) -> String {
+        self.trace_from_box_vec()
+            .into_iter()
+            .reduce(|acc, s| format!("{acc}\n{s}"))
+            .unwrap_or_default()
+    }
+
+    fn trace_from_box_vec(&self) -> Vec<String> {
+        let mut trace = vec![];
+        let empty = Rc::new(Clause::new());
+        if !self.bt.contains_key(&empty) {
+            return trace;
+        }
+        self.trace_from(Rc::downgrade(&empty), &mut trace);
+        trace
+    }
+
+    fn trace_from(&self, clause: Weak<Clause>, trace: &mut Vec<String>) {
+        if let Some((c1, c2)) = self.bt.get(&clause.upgrade().unwrap()).unwrap() {
+            self.trace_from(Weak::clone(&c1), trace);
+            self.trace_from(Weak::clone(&c2), trace);
+            trace.push(format!(
+                "{}, {} -> {}",
+                c1.upgrade()
+                    .expect("self.find_box() is poorly written")
+                    .as_ref(),
+                c2.upgrade()
+                    .expect("self.find_box() is poorly written")
+                    .as_ref(),
+                clause
+                    .upgrade()
+                    .expect("self.find_box() is poorly written")
+                    .as_ref()
+            ))
+        }
     }
 }

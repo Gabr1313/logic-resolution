@@ -68,7 +68,6 @@ pub struct InternalErrorTok {
     message: String,
 }
 impl Error for InternalErrorTok {}
-
 impl InternalErrorTok {
     pub fn new(tok: token::Kind, message: String) -> Box<InternalErrorTok> {
         Box::new(InternalErrorTok { kind: tok, message })
@@ -83,3 +82,33 @@ impl fmt::Display for InternalErrorTok {
         )
     }
 }
+
+#[derive(Debug)]
+pub struct Feof;
+impl Error for Feof {}
+impl Feof {
+    pub fn new() -> Box<Feof> {
+        Box::new(Feof)
+    }
+}
+impl fmt::Display for Feof {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Found end of file",)
+    }
+}
+
+#[derive(Debug)]
+pub struct Execute;
+impl Error for Execute {}
+impl Execute {
+    pub fn new() -> Box<Execute> {
+        Box::new(Execute)
+    }
+}
+impl fmt::Display for Execute {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Should not panic, but execute instead",)
+    }
+}
+
+// @todo all the .expect() could be transformed in errors... and .unwrap()?
