@@ -9,8 +9,6 @@ mod test;
 #[derive(Debug)]
 pub struct Lexer {
     buffer: String,
-    // @perf save ids as a progressive number ?
-    //       -> problem: printing becomes a shitty: where to store the HashMap(Id, String)?
     ids: HashMap<String, Rc<String>>,
     pos: usize,
     row: usize,
@@ -87,6 +85,14 @@ impl Lexer {
                 self.skip_ch();
                 token::Kind::Bang
             }
+            Some(b'?') => {
+                self.skip_ch();
+                token::Kind::Question
+            }
+            Some(b'-') => {
+                self.skip_ch();
+                token::Kind::Minus
+            }
             Some(b'=') => match self.skip_ch() {
                 Some(b'>') => {
                     self.skip_ch();
@@ -113,6 +119,10 @@ impl Lexer {
                     token::Kind::Invalid
                 }
             },
+            Some(b'0'..=b'9') => {
+                self.skip_while(is_digit);
+                token::Kind::Number
+            }
             Some(b'a'..=b'z' | b'A'..=b'Z') => {
                 self.skip_while(is_alphanumeric);
                 token::Kind::Identifier
@@ -155,6 +165,10 @@ impl Lexer {
 
 fn is_alphanumeric(c: u8) -> bool {
     c.is_ascii_alphanumeric() || c == b'_'
+}
+
+fn is_digit(c: u8) -> bool {
+    c.is_ascii_digit()
 }
 
 fn is_whitespace(c: u8) -> bool {

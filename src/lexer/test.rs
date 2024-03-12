@@ -11,10 +11,14 @@ x => y
 x| y;
 x & y
 x <=>y   ;
+!
 ~x ;
 x&y
-(x | y) & z
+(x | y) & z!
 is_al_num <=> Is_Al_NuM
+-12
+??
+09
 <<=> y
 x <y
 ^
@@ -44,7 +48,12 @@ x <y
             3,
             1,
         )),
-        Ok(token::Token::new(token::Kind::Or, Rc::new("|".to_string()), 3, 2)),
+        Ok(token::Token::new(
+            token::Kind::Or,
+            Rc::new("|".to_string()),
+            3,
+            2,
+        )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("y".to_string()),
@@ -63,7 +72,12 @@ x <y
             4,
             1,
         )),
-        Ok(token::Token::new(token::Kind::And, Rc::new("&".to_string()), 4, 3)),
+        Ok(token::Token::new(
+            token::Kind::And,
+            Rc::new("&".to_string()),
+            4,
+            3,
+        )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("y".to_string()),
@@ -94,104 +108,171 @@ x <y
             5,
             10,
         )),
-        Ok(token::Token::new(token::Kind::Not, Rc::new("~".to_string()), 6, 1)),
+        Ok(token::Token::new(
+            token::Kind::Bang,
+            Rc::new("!".to_string()),
+            6,
+            1,
+        )),
+        Ok(token::Token::new(
+            token::Kind::Not,
+            Rc::new("~".to_string()),
+            7,
+            1,
+        )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("x".to_string()),
-            6,
+            7,
             2,
         )),
         Ok(token::Token::new(
             token::Kind::SemiColon,
             Rc::new(";".to_string()),
-            6,
+            7,
             4,
         )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("x".to_string()),
-            7,
+            8,
             1,
         )),
-        Ok(token::Token::new(token::Kind::And, Rc::new("&".to_string()), 7, 2)),
+        Ok(token::Token::new(
+            token::Kind::And,
+            Rc::new("&".to_string()),
+            8,
+            2,
+        )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("y".to_string()),
-            7,
+            8,
             3,
         )),
         Ok(token::Token::new(
             token::Kind::ParenL,
             Rc::new("(".to_string()),
-            8,
+            9,
             1,
         )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("x".to_string()),
-            8,
+            9,
             2,
         )),
-        Ok(token::Token::new(token::Kind::Or, Rc::new("|".to_string()), 8, 4)),
+        Ok(token::Token::new(
+            token::Kind::Or,
+            Rc::new("|".to_string()),
+            9,
+            4,
+        )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("y".to_string()),
-            8,
+            9,
             6,
         )),
         Ok(token::Token::new(
             token::Kind::ParenR,
             Rc::new(")".to_string()),
-            8,
+            9,
             7,
         )),
-        Ok(token::Token::new(token::Kind::And, Rc::new("&".to_string()), 8, 9)),
+        Ok(token::Token::new(
+            token::Kind::And,
+            Rc::new("&".to_string()),
+            9,
+            9,
+        )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("z".to_string()),
-            8,
+            9,
             11,
+        )),
+        Ok(token::Token::new(
+            token::Kind::Bang,
+            Rc::new("!".to_string()),
+            9,
+            12,
         )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("is_al_num".to_string()),
-            9,
+            10,
             1,
         )),
         Ok(token::Token::new(
             token::Kind::Equiv,
             Rc::new("<=>".to_string()),
-            9,
+            10,
             11,
         )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("Is_Al_NuM".to_string()),
-            9,
+            10,
             15,
         )),
-        Err(InvalidTokenErr::new("<<=>".to_string(), 10, 1)),
+        Ok(token::Token::new(
+            token::Kind::Minus,
+            Rc::new("-".to_string()),
+            11,
+            1,
+        )),
+        Ok(token::Token::new(
+            token::Kind::Number,
+            Rc::new("12".to_string()),
+            11,
+            2,
+        )),
+        Ok(token::Token::new(
+            token::Kind::Question,
+            Rc::new("?".to_string()),
+            12,
+            1,
+        )),
+        Ok(token::Token::new(
+            token::Kind::Question,
+            Rc::new("?".to_string()),
+            12,
+            2,
+        )),
+        Ok(token::Token::new(
+            token::Kind::Number,
+            Rc::new("09".to_string()),
+            13,
+            1,
+        )),
+        Err(InvalidTokenErr::new("<<=>".to_string(), 14, 1)),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("y".to_string()),
-            10,
+            14,
             6,
         )),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("x".to_string()),
-            11,
+            15,
             1,
         )),
-        Err(InvalidTokenErr::new("<".to_string(), 11, 3)),
+        Err(InvalidTokenErr::new("<".to_string(), 15, 3)),
         Ok(token::Token::new(
             token::Kind::Identifier,
             Rc::new("y".to_string()),
-            11,
+            15,
             4,
         )),
-        Err(InvalidTokenErr::new("^".to_string(), 12, 1)),
-        Ok(token::Token::new(token::Kind::Eof, Rc::new("".to_string()), 13, 1)),
+        Err(InvalidTokenErr::new("^".to_string(), 16, 1)),
+        Ok(token::Token::new(
+            token::Kind::Eof,
+            Rc::new("".to_string()),
+            17,
+            1,
+        )),
     ];
     let mut lex = Lexer::new();
     lex.load_bytes(buffer.to_string());

@@ -32,6 +32,9 @@ pub struct Binary {
 }
 
 impl Binary {
+    pub fn parts<'a>(&'a self) -> (&'a Formula, token::Kind, &'a Formula) {
+        (self.left.as_ref(), self.operator, self.right.as_ref())
+    }
     pub fn destroy(self) -> (Formula, token::Kind, Formula) {
         (*self.left, self.operator, *self.right)
     }
@@ -58,15 +61,32 @@ pub enum Formula {
     Leaf(Leaf),
 }
 
-impl fmt::Display for Formula {
+pub enum Statement {
+    Formula(Formula),
+    Eof,
+    Execute,
+    Query,
+    Delete(usize),
+}
+
+impl From<Formula> for Statement {
+    fn from(f: Formula) -> Statement {
+        Statement::Formula(f)
+    }
+}
+
+impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                Formula::Leaf(l) => l.ident.to_string(),
-                Formula::Unary(u) => format!("({}{})", u.operator, u.right),
-                Formula::Binary(b) => format!("({} {} {})", b.left, b.operator, b.right),
+                // @test
+                Statement::Formula(f) => format!("{f}"),
+                Statement::Execute => format!("Execute"),
+                Statement::Query => format!("Query"),
+                Statement::Delete(n) => format!("Delete {n}"),
+                Statement::Eof => format!("Found end of file"),
             }
         )
     }
@@ -148,7 +168,7 @@ impl Formula {
         })
     }
 
-    pub fn negate_digest(self) -> Res<Formula> {
+    fn negate_digest(self) -> Res<Formula> {
         Ok(match self {
             Formula::Unary(x) => {
                 let (operator, right) = x.destroy();
@@ -282,5 +302,19 @@ impl Formula {
         } else {
             return Err(InternalError::new("assert right.is_and()".to_string()));
         })
+    }
+}
+
+impl fmt::Display for Formula {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Formula::Leaf(l) => l.ident.to_string(),
+                Formula::Unary(u) => format!("({}{})", u.operator, u.right),
+                Formula::Binary(b) => format!("({} {} {})", b.left, b.operator, b.right),
+            }
+        )
     }
 }

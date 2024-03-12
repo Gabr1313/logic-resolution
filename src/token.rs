@@ -14,6 +14,9 @@ pub enum Kind {
     Equiv,
     SemiColon,
     Bang,
+    Question,
+    Number,
+    Minus,
 }
 
 impl Kind {
@@ -25,9 +28,8 @@ impl Kind {
             Kind::Or => 5,
             Kind::Implies => 4,
             Kind::Equiv => 3,
-            Kind::SemiColon | Kind::Identifier | Kind::ParenL | Kind::ParenR => 2,
-            // @todo tests
-            Kind::Bang | Kind::Invalid | Kind::Eof => 1,
+            Kind::Invalid | Kind::Eof => 1,
+            _ => 2,
         }
     }
 
@@ -37,6 +39,7 @@ impl Kind {
             Kind::Invalid => "INVALID",
             Kind::Eof => "EOF",
             Kind::Identifier => "IDENTIFIER",
+            Kind::Number => "NUMBER",
             Kind::ParenL => "(",
             Kind::ParenR => ")",
             Kind::And => "&",
@@ -46,6 +49,8 @@ impl Kind {
             Kind::Equiv => "<=>",
             Kind::SemiColon => ";",
             Kind::Bang => "!",
+            Kind::Question => "?",
+            Kind::Minus => "-",
         }
     }
 }
@@ -82,11 +87,8 @@ impl Token {
     pub fn kind(&self) -> Kind {
         self.kind
     }
-    pub fn literal(&self) -> &str {
-        &self.literal
-    }
-    pub fn destory(self) -> Rc<String> {
-        self.literal
+    pub fn literal(&self) -> Rc<String> {
+        Rc::clone(&self.literal)
     }
     pub fn row(&self) -> usize {
         self.row

@@ -1,4 +1,6 @@
-use crate::{lexer, parser::Parser, token};
+use crate::{context, lexer, parser::Parser, token};
+
+use super::Statement;
 
 #[test]
 fn test_digest() {
@@ -11,6 +13,7 @@ x <=> y;
 ~x => ~y;
 x <=> y => z;
 x | y => z;
+!
 ";
     let expected: &[&str] = &[
         "(~x)",
@@ -21,6 +24,8 @@ x | y => z;
         "(x | (~y))",
         "((x & ((~y) | z)) | ((~x) & (y & (~z))))",
         "(((~x) & (~y)) | z)",
+        "Execute",
+        "Found end of file",
     ];
 
     // i suppose that the lexer tests pass
@@ -36,12 +41,18 @@ x | y => z;
     let mut lex = lexer::Lexer::new();
     lex.load_bytes(buffer.to_string());
     let mut pars = Parser::new(lex).unwrap();
+    let mut context = context::Context::new();
 
     for &exp in expected {
         // i suppose that the parser tests pass
-        let l = match pars.parse_formula().unwrap().digest() {
-            Ok(s) => format!("{s}"),
-            Err(s) => format!("{s}"),
+        let parsed = pars.parse_statement_update_context(&mut context).unwrap();
+        let l = if let Statement::Formula(f) = parsed {
+            match f.digest() {
+                Ok(s) => format!("{s}"),
+                Err(s) => format!("{s}"),
+            }
+        } else {
+            format!("{parsed}")
         };
         if exp != l {
             panic!("expected=`{exp}`\ngot     =`{l}`")
@@ -74,13 +85,19 @@ a & (b | c | (d & e & (f | g)));
     }
     let mut lex = lexer::Lexer::new();
     lex.load_bytes(buffer.to_string());
+    let mut context = context::Context::new();
 
     let mut pars = Parser::new(lex).unwrap();
     for &exp in expected {
         // i suppose that the parser tests pass
-        let l = match pars.parse_formula().unwrap().distribute() {
-            Ok(s) => format!("{s}"),
-            Err(s) => format!("{s}"),
+        let parsed = pars.parse_statement_update_context(&mut context).unwrap();
+        let l = if let Statement::Formula(f) = parsed {
+            match f.distribute() {
+                Ok(s) => format!("{s}"),
+                Err(s) => format!("{s}"),
+            }
+        } else {
+            format!("{parsed}")
         };
         if exp != l {
             panic!("expected=`{exp}`\ngot     =`{l}`")

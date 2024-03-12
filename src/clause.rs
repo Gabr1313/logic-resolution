@@ -1,4 +1,5 @@
 use crate::ast;
+use crate::context::Context;
 use crate::error::{InternalError, Res};
 use crate::token;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -66,8 +67,25 @@ impl fmt::Display for Clause {
 pub struct SetClauses {
     // @perf would it be better to use HashSets?
     //       -> problem: print in tests would not be deterministic
+    //       -> problem: implementation (hash of HashSets does not exists
     // using a BTreeSet i should avoid duplicates
     bt: BTreeMap<Rc<Clause>, Option<(Weak<Clause>, Weak<Clause>)>>,
+}
+
+impl From<&Context> for SetClauses {
+    fn from(c: &Context) -> SetClauses {
+        let bt = c
+            .inner()
+            .iter()
+            .map(|x| x.set_clauses())
+            .fold(BTreeMap::new(), |mut acc, x| {
+                for x in x.as_ref().bt.iter() {
+                    acc.insert(Rc::clone(x.0), x.1.clone()); // it uses Weak::clone() inside
+                }
+                acc
+            });
+        SetClauses { bt }
+    }
 }
 
 impl fmt::Display for SetClauses {
@@ -83,7 +101,7 @@ impl fmt::Display for SetClauses {
 }
 
 impl SetClauses {
-    pub fn new(formula: ast::Formula) -> Res<SetClauses> {
+    pub fn new(formula: &ast::Formula) -> Res<SetClauses> {
         let mut c = SetClauses {
             bt: BTreeMap::new(),
         };
@@ -100,11 +118,11 @@ impl SetClauses {
         }
     }
 
-    fn append_formula(&mut self, formula: ast::Formula) -> Res<()> {
+    fn append_formula(&mut self, formula: &ast::Formula) -> Res<()> {
         // find `or` recursively than call append_to_clause()
         match formula {
             ast::Formula::Binary(x) => {
-                let (left, operator, right) = x.destroy();
+                let (left, operator, right) = x.parts();
                 if operator == token::Kind::Or {
                     let mut bt = Clause::new();
                     // compiler does not evaluate the second expression if the first one is false
@@ -129,10 +147,10 @@ impl SetClauses {
         Ok(())
     }
 
-    fn append_atom(bt: &mut Clause, f: ast::Formula) -> Res<bool> {
+    fn append_atom(bt: &mut Clause, f: &ast::Formula) -> Res<bool> {
         Ok(match f {
             ast::Formula::Binary(x) => {
-                let (left, operator, right) = x.destroy();
+                let (left, operator, right) = x.parts();
                 debug_assert!(operator == token::Kind::Or);
                 // compiler does not evaluate the second expression if the first one is false
                 SetClauses::append_atom(bt, left)? && SetClauses::append_atom(bt, right)?
@@ -141,6 +159,8 @@ impl SetClauses {
                 debug_assert!(x.operator() == token::Kind::Not);
                 if let ast::Formula::Leaf(x) = x.right() {
                     // @perf comparing 2 atoms is slow: it compares inner values of Rc (String)
+                    //       would it be better to use a progrssive number istead of String? or to
+                    //       use unsafe, save pointers and compare them?
                     // pruning: it is useless to have a clause like {!x, x, ...}
                     if bt.c.contains(&Atom::Positive(x.string())) {
                         false

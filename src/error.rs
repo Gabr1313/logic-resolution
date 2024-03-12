@@ -47,6 +47,26 @@ impl fmt::Display for ParseErr {
 }
 
 #[derive(Debug)]
+pub struct IndexOutOfBound {
+    message: String,
+}
+impl Error for IndexOutOfBound {}
+impl IndexOutOfBound {
+    pub fn new(message: String) -> Box<IndexOutOfBound> {
+        Box::new(IndexOutOfBound { message })
+    }
+}
+impl fmt::Display for IndexOutOfBound {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Index out of bound: {}",
+            self.message
+        )
+    }
+}
+
+#[derive(Debug)]
 pub struct InternalError {
     message: String,
 }
@@ -82,33 +102,3 @@ impl fmt::Display for InternalErrorTok {
         )
     }
 }
-
-#[derive(Debug)]
-pub struct Feof;
-impl Error for Feof {}
-impl Feof {
-    pub fn new() -> Box<Feof> {
-        Box::new(Feof)
-    }
-}
-impl fmt::Display for Feof {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Found end of file",)
-    }
-}
-
-#[derive(Debug)]
-pub struct Execute;
-impl Error for Execute {}
-impl Execute {
-    pub fn new() -> Box<Execute> {
-        Box::new(Execute)
-    }
-}
-impl fmt::Display for Execute {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Should not panic, but execute instead",)
-    }
-}
-
-// @todo all the .expect() could be transformed in errors... and .unwrap()?

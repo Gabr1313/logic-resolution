@@ -1,5 +1,7 @@
 use super::SetClauses;
-use crate::{lexer, parser, token};
+use crate::{
+    ast::{self, Statement}, context, lexer, parser, token
+};
 
 #[test]
 fn test_clauses() {
@@ -22,6 +24,7 @@ a & (b | c | (d & e & (f | g)));
         "{{a, b}, {a, c}, {a, d, e, f}, {a, d, e, g}}",
         "{{a}, {b, c, d}, {b, c, e}, {b, c, f, g}}",
         "{}",
+        "Found end of file",
     ];
 
     // i suppose that the lexer tests pass
@@ -37,12 +40,17 @@ a & (b | c | (d & e & (f | g)));
     let mut lex = lexer::Lexer::new();
     lex.load_bytes(buffer.to_string());
     let mut pars = parser::Parser::new(lex).unwrap();
+    let mut context = context::Context::new();
 
     for &exp in expected {
-        let c = SetClauses::new(pars.parse_formula().unwrap().distribute().unwrap());
-        let s = match c {
-            Ok(c) => c.to_string(),
-            Err(c) => c.to_string(),
+        let parsed = pars.parse_statement_update_context(&mut context).unwrap();
+        let s = if let ast::Statement::Formula(f) = parsed {
+            match SetClauses::new(&f.distribute().unwrap()) {
+                Ok(s) => format!("{s}"),
+                Err(s) => format!("{s}"),
+            }
+        } else {
+            format!("{parsed}")
         };
         if exp != s {
             panic!("expected=`{exp}`\ngot     =`{s}`")
@@ -78,15 +86,22 @@ b | a;
     let mut lex = lexer::Lexer::new();
     lex.load_bytes(buffer.to_string());
     let mut pars = parser::Parser::new(lex).unwrap();
+    let mut context = context::Context::new();
 
     let mut v = Vec::new();
     loop {
-        match pars.parse_formula() {
-            Ok(parsed) => {
-                let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
+        match pars.parse_statement_update_context(&mut context) {
+            Ok(Statement::Eof) => break,
+            Ok(Statement::Formula(formula)) => {
+                let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                 v.push(c);
             }
-            Err(_) => break, // shoudl be only eof
+            Err(err) => {
+                panic!("{}", err);
+            }
+            Ok(p) => {
+                panic!("{}", p);
+            }
         }
     }
     let t = SetClauses::merge(v);
@@ -114,15 +129,22 @@ fn test_prune() {
     let mut lex = lexer::Lexer::new();
     lex.load_bytes(buffer.to_string());
     let mut pars = parser::Parser::new(lex).unwrap();
+    let mut context = context::Context::new();
 
     let mut v = Vec::new();
     loop {
-        match pars.parse_formula() {
-            Ok(parsed) => {
-                let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
+        match pars.parse_statement_update_context(&mut context) {
+            Ok(Statement::Eof) => break,
+            Ok(Statement::Formula(formula)) => {
+                let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                 v.push(c);
             }
-            Err(_) => break, // shoudl be only eof
+            Err(err) => {
+                panic!("{}", err);
+            }
+            Ok(p) => {
+                panic!("{}", p);
+            }
         }
     }
     let mut t = SetClauses::merge(v);
@@ -156,15 +178,22 @@ fn test_find_box() {
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buf.to_string());
         let mut pars = parser::Parser::new(lex).unwrap();
+    let mut context = context::Context::new();
 
         let mut v = Vec::new();
         loop {
-            match pars.parse_formula() {
-                Ok(parsed) => {
-                    let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
+            match pars.parse_statement_update_context(&mut context) {
+                Ok(Statement::Eof) => break,
+                Ok(Statement::Formula(formula)) => {
+                    let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                     v.push(c);
                 }
-                Err(_) => break, // shoudl be only eof
+                Err(err) => {
+                    panic!("{}", err);
+                }
+                Ok(p) => {
+                    panic!("{}", p);
+                }
             }
         }
         let mut t = SetClauses::merge(v);
@@ -205,15 +234,22 @@ fn test_trace_from_box() {
         let mut lex = lexer::Lexer::new();
         lex.load_bytes(buf.to_string());
         let mut pars = parser::Parser::new(lex).unwrap();
+    let mut context = context::Context::new();
 
         let mut v = Vec::new();
         loop {
-            match pars.parse_formula() {
-                Ok(parsed) => {
-                    let c = SetClauses::new(parsed.distribute().unwrap()).unwrap();
+            match pars.parse_statement_update_context(&mut context) {
+                Ok(Statement::Eof) => break,
+                Ok(Statement::Formula(formula)) => {
+                    let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                     v.push(c);
                 }
-                Err(_) => break, // shoudl be only eof
+                Err(err) => {
+                    panic!("{}", err);
+                }
+                Ok(p) => {
+                    panic!("{}", p);
+                }
             }
         }
         let mut t = SetClauses::merge(v);
