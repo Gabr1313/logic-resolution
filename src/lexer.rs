@@ -56,7 +56,7 @@ impl Lexer {
         self.skip_while(is_whitespace);
         let (init_pos, init_col, init_row) = (self.pos, self.col, self.row);
         let tok_kind = match self.ch() {
-            None => token::Kind::Eof,
+            None => token::Kind::Eoi,
             Some(b';') => {
                 self.skip_ch();
                 token::Kind::SemiColon
@@ -136,15 +136,21 @@ impl Lexer {
         if tok_kind == token::Kind::Invalid {
             Err(InvalidTokenErr::new(s.to_string(), init_row, init_col))
         } else {
-            // if I crate another instance of the string the comparison beetween 
+            // if I crate another instance of the string the comparison beetween
             // atoms does not work anymore
             Ok(if let Some(rc) = self.ids.get(s) {
                 token::Token::new(tok_kind, Rc::clone(rc), init_row, init_col)
             } else {
                 let s = s.to_string();
                 let rc = Rc::new(s.clone());
-                self.ids.insert(s, Rc::clone(&rc));
-                token::Token::new(tok_kind, rc, init_row, init_col)
+                if s == "exit" {
+                    // up to now there is only 1 keyword, so I don't worry that much
+                    // an HashMap would be a good alternative
+                    token::Token::new(token::Kind::Exit, rc, init_row, init_col)
+                } else {
+                    self.ids.insert(s, Rc::clone(&rc));
+                    token::Token::new(tok_kind, rc, init_row, init_col)
+                }
             })
         }
     }

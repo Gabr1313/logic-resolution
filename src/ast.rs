@@ -59,11 +59,13 @@ pub enum Formula {
     Unary(Unary),
     Binary(Binary),
     Leaf(Leaf),
+    // Link(context::InnerContext), // @todo? It could be faster to compose formulas
 }
 
 pub enum Statement {
     Formula(Formula),
-    Eof,
+    Eoi,
+    Exit,
     Execute,
     Query,
     Delete(usize),
@@ -85,7 +87,8 @@ impl fmt::Display for Statement {
                 Statement::Execute => format!("Execute"),
                 Statement::Query => format!("Query"),
                 Statement::Delete(n) => format!("Delete {n}"),
-                Statement::Eof => format!("Found end of file"),
+                Statement::Eoi => format!("End of input"),
+                Statement::Exit => format!("Exit"),
             }
         )
     }
@@ -175,7 +178,7 @@ impl Formula {
                     token::Kind::Not => right,
                     _ => {
                         return Err(InternalErrorTok::new(
-                            token::Kind::Eof,
+                            token::Kind::Eoi,
                             "not an unary opertor".to_string(),
                         ))
                     }
@@ -207,7 +210,7 @@ impl Formula {
                     .digest()?,
                     _ => {
                         return Err(InternalErrorTok::new(
-                            token::Kind::Eof,
+                            token::Kind::Eoi,
                             "not a binnary opertor".to_string(),
                         ))
                     }

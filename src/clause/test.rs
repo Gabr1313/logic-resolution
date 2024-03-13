@@ -27,7 +27,7 @@ a & (b | c | (d & e & (f | g)));
         "{{a, b}, {a, c}, {a, d, e, f}, {a, d, e, g}}",
         "{{a}, {b, c, d}, {b, c, e}, {b, c, f, g}}",
         "{}",
-        "Found end of file",
+        "End of input",
     ];
 
     // i suppose that the lexer tests pass
@@ -35,7 +35,7 @@ a & (b | c | (d & e & (f | g)));
     lex_test.load_bytes(buffer.to_string());
     let mut tokens = Vec::new();
     while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eof {
+        if t.kind() == token::Kind::Eoi {
             break;
         }
         tokens.push(Some(t));
@@ -80,7 +80,7 @@ b | a;
     lex_test.load_bytes(buffer.to_string());
     let mut tokens = Vec::new();
     while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eof {
+        if t.kind() == token::Kind::Eoi {
             break;
         }
         tokens.push(Some(t));
@@ -92,7 +92,7 @@ b | a;
     let mut v = Vec::new();
     loop {
         match pars.parse_statement_update_context(&mut context) {
-            Ok(Statement::Eof) => break,
+            Ok(Statement::Eoi) => break,
             Ok(Statement::Formula(formula)) => {
                 let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                 v.push(c);
@@ -121,7 +121,7 @@ fn test_prune() {
     lex_test.load_bytes(buffer.to_string());
     let mut tokens = Vec::new();
     while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eof {
+        if t.kind() == token::Kind::Eoi {
             break;
         }
         tokens.push(Some(t));
@@ -133,7 +133,7 @@ fn test_prune() {
     let mut v = Vec::new();
     loop {
         match pars.parse_statement_update_context(&mut context) {
-            Ok(Statement::Eof) => break,
+            Ok(Statement::Eoi) => break,
             Ok(Statement::Formula(formula)) => {
                 let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                 v.push(c);
@@ -168,7 +168,7 @@ fn test_find_box() {
         lex_test.load_bytes(buffer.to_string());
         let mut tokens = Vec::new();
         while let Ok(t) = lex_test.next_tok() {
-            if t.kind() == token::Kind::Eof {
+            if t.kind() == token::Kind::Eoi {
                 break;
             }
             tokens.push(Some(t));
@@ -180,7 +180,7 @@ fn test_find_box() {
         let mut v = Vec::new();
         loop {
             match pars.parse_statement_update_context(&mut context) {
-                Ok(Statement::Eof) => break,
+                Ok(Statement::Eoi) => break,
                 Ok(Statement::Formula(formula)) => {
                     let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                     v.push(c);
@@ -225,7 +225,7 @@ fn test_trace_from_box() {
         lex_test.load_bytes(buffer.to_string());
         let mut tokens = Vec::new();
         while let Ok(t) = lex_test.next_tok() {
-            if t.kind() == token::Kind::Eof {
+            if t.kind() == token::Kind::Eoi {
                 break;
             }
             tokens.push(Some(t));
@@ -237,7 +237,7 @@ fn test_trace_from_box() {
         let mut v = Vec::new();
         loop {
             match pars.parse_statement_update_context(&mut context) {
-                Ok(Statement::Eof) => break,
+                Ok(Statement::Eoi) => break,
                 Ok(Statement::Formula(formula)) => {
                     let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
                     v.push(c);

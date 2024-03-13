@@ -24,6 +24,7 @@ x <=> y => z | w & ~v;
 a!
 =>
 (x | y;
+exit;
 ";
     let expected: &[&str] = &[
         "x",
@@ -46,7 +47,8 @@ a!
         "Parse error [18:1]: got=`=>` (Implies): not the beginning of a formula",
         "Parse error [19:7]: got=`;` (SemiColon): expected `)`",
         "Parse error [19:7]: got=`;` (SemiColon): not the beginning of a formula",
-        "Found end of file",
+        "Exit",
+        "End of input",
     ];
 
     // i suppose that the lexer tests pass
@@ -54,7 +56,7 @@ a!
     lex_test.load_bytes(buffer.to_string());
     let mut tokens = Vec::new();
     while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eof {
+        if t.kind() == token::Kind::Eoi {
             break;
         }
         tokens.push(Some(t));
@@ -110,7 +112,7 @@ x;
     lex_test.load_bytes(buffer.to_string());
     let mut tokens = Vec::new();
     while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eof {
+        if t.kind() == token::Kind::Eoi {
             break;
         }
         tokens.push(Some(t));

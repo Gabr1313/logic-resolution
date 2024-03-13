@@ -3,7 +3,7 @@ use std::{fmt, rc::Rc};
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Kind {
     Invalid,
-    Eof,
+    Eoi,
     Identifier,
     ParenL,
     ParenR,
@@ -17,6 +17,7 @@ pub enum Kind {
     Question,
     Number,
     Minus,
+    Exit,
 }
 
 impl Kind {
@@ -28,7 +29,7 @@ impl Kind {
             Kind::Or => 5,
             Kind::Implies => 4,
             Kind::Equiv => 3,
-            Kind::Invalid | Kind::Eof => 1,
+            Kind::Invalid | Kind::Eoi => 1,
             _ => 2,
         }
     }
@@ -37,7 +38,7 @@ impl Kind {
     pub fn as_str(&self) -> &str {
         match &self {
             Kind::Invalid => "INVALID",
-            Kind::Eof => "EOF",
+            Kind::Eoi => "EOI",
             Kind::Identifier => "IDENTIFIER",
             Kind::Number => "NUMBER",
             Kind::ParenL => "(",
@@ -51,6 +52,7 @@ impl Kind {
             Kind::Bang => "!",
             Kind::Question => "?",
             Kind::Minus => "-",
+            Kind::Exit => "EXIT",
         }
     }
 }

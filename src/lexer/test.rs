@@ -22,6 +22,7 @@ is_al_num <=> Is_Al_NuM
 <<=> y
 x <y
 ^
+exit
 ";
     let expected: &[Res<token::Token>] = &[
         Ok(token::Token::new(
@@ -268,9 +269,15 @@ x <y
         )),
         Err(InvalidTokenErr::new("^".to_string(), 16, 1)),
         Ok(token::Token::new(
-            token::Kind::Eof,
-            Rc::new("".to_string()),
+            token::Kind::Exit,
+            Rc::new("exit".to_string()),
             17,
+            1,
+        )),
+        Ok(token::Token::new(
+            token::Kind::Eoi,
+            Rc::new("".to_string()),
+            18,
             1,
         )),
     ];

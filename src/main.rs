@@ -12,5 +12,4 @@ fn main() -> Res<()> {
     Ok(())
 }
 
-// @todo exit command
-// @todo link in ast
+// @todo help

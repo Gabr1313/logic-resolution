@@ -27,7 +27,7 @@ x | y => z;
         "(((~x) & (~y)) | z)",
         "(a & ((a & (~b)) | ((~a) & b)))",
         "Execute",
-        "Found end of file",
+        "End of input",
     ];
 
     // i suppose that the lexer tests pass
@@ -35,7 +35,7 @@ x | y => z;
     lex_test.load_bytes(buffer.to_string());
     let mut tokens = Vec::new();
     while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eof {
+        if t.kind() == token::Kind::Eoi {
             break;
         }
         tokens.push(Some(t));
@@ -79,7 +79,7 @@ a & (b | c | (d & e & (f | g)));
     lex_test.load_bytes(buffer.to_string());
     let mut tokens = Vec::new();
     while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eof {
+        if t.kind() == token::Kind::Eoi {
             break;
         }
         tokens.push(Some(t));

@@ -14,9 +14,12 @@ pub fn repl() -> Res<()> {
     let mut pars = parser::Parser::new()?;
     let mut context = context::Context::new();
     print!("{}", PROMPT);
-    let _ = io::stdout().flush();
+    io::stdout().flush()?;
     for line in stdin.lines() {
-        eval_print(&mut pars, line?, &mut context)?;
+        if eval_print(&mut pars, line?, &mut context)? {
+            io::stdout().flush()?; // do i need this here?
+            break;
+        }
         print!("{}", PROMPT);
         io::stdout().flush()?;
     }
@@ -33,13 +36,19 @@ pub fn rep(filename: &str) -> Res<()> {
     Ok(())
 }
 
-fn eval_print(pars: &mut parser::Parser, line: String, context: &mut context::Context) -> Res<()> {
-    Ok(if let Err(err) = pars.load_bytes(line) {
+/// returns true if exit is read
+fn eval_print(
+    pars: &mut parser::Parser,
+    line: String,
+    context: &mut context::Context,
+) -> Res<bool> {
+    if let Err(err) = pars.load_bytes(line) {
         eprintln!("{}", err);
     } else {
         loop {
             match pars.parse_statement_update_context(context) {
-                Ok(Statement::Eof) => break,
+                Ok(Statement::Eoi) => break,
+                Ok(Statement::Exit) => return Ok(true),
                 Ok(Statement::Delete(n)) => println!("Formula {n} removed."),
                 Ok(Statement::Query) => println!("{}", context),
                 Ok(Statement::Execute) => {
@@ -54,5 +63,6 @@ fn eval_print(pars: &mut parser::Parser, line: String, context: &mut context::Co
                 Err(err) => eprintln!("{}", err),
             }
         }
-    })
+    };
+    Ok(false)
 }

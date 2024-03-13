@@ -63,7 +63,7 @@ impl Parser {
                 Ok(retval)
             }
             ast::Statement::Formula(f) => {
-                context.push(Rc::new(f.clone()))?; 
+                context.push(Rc::new(f.clone()))?;
                 Ok(f.into())
             }
             _ => Ok(retval),
@@ -75,7 +75,7 @@ impl Parser {
     /// does not skip what is there instead of ``
     pub fn parse_statement(&mut self, context: &Context) -> Res<ast::Statement> {
         Ok(match self.curr_tok().kind() {
-            token::Kind::Eof => ast::Statement::Eof,
+            token::Kind::Eoi => ast::Statement::Eoi,
             token::Kind::Bang => {
                 self.skip_tok()?;
                 ast::Statement::Execute
@@ -85,6 +85,17 @@ impl Parser {
                 ast::Statement::Query
             }
             token::Kind::Minus => self.parse_delete()?,
+            token::Kind::Exit => {
+                self.skip_tok()?;
+                if self.curr_tok().kind() != token::Kind::SemiColon {
+                    return Err(ParseErr::new(
+                        self.curr_tok().clone(),
+                        format!("expected `{}`", token::Kind::SemiColon),
+                    ));
+                }
+                self.skip_tok()?;
+                ast::Statement::Exit
+            }
             _ => {
                 let stat = self.recursive_pratt(0, context)?;
                 if self.curr_tok().kind() != token::Kind::SemiColon {
