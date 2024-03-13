@@ -1,6 +1,9 @@
 use super::SetClauses;
 use crate::{
-    ast::{self, Statement}, context, lexer, parser, token
+    ast::{self, Statement},
+    context, lexer,
+    parser::Parser,
+    token,
 };
 
 #[test]
@@ -37,9 +40,8 @@ a & (b | c | (d & e & (f | g)));
         }
         tokens.push(Some(t));
     }
-    let mut lex = lexer::Lexer::new();
-    lex.load_bytes(buffer.to_string());
-    let mut pars = parser::Parser::new(lex).unwrap();
+    let mut pars = Parser::new().unwrap();
+    pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
 
     for &exp in expected {
@@ -83,9 +85,8 @@ b | a;
         }
         tokens.push(Some(t));
     }
-    let mut lex = lexer::Lexer::new();
-    lex.load_bytes(buffer.to_string());
-    let mut pars = parser::Parser::new(lex).unwrap();
+    let mut pars = Parser::new().unwrap();
+    pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
 
     let mut v = Vec::new();
@@ -125,10 +126,8 @@ fn test_prune() {
         }
         tokens.push(Some(t));
     }
-
-    let mut lex = lexer::Lexer::new();
-    lex.load_bytes(buffer.to_string());
-    let mut pars = parser::Parser::new(lex).unwrap();
+    let mut pars = Parser::new().unwrap();
+    pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
 
     let mut v = Vec::new();
@@ -164,9 +163,9 @@ fn test_find_box() {
         ("(~(B&C)) & (A=>(C<=>B)) & (~C=>A) & (~B|(A=>~C));", false),
     ];
 
-    for (buf, exp) in tests {
+    for (buffer, exp) in tests {
         let mut lex_test = lexer::Lexer::new();
-        lex_test.load_bytes(buf.to_string());
+        lex_test.load_bytes(buffer.to_string());
         let mut tokens = Vec::new();
         while let Ok(t) = lex_test.next_tok() {
             if t.kind() == token::Kind::Eof {
@@ -174,11 +173,9 @@ fn test_find_box() {
             }
             tokens.push(Some(t));
         }
-
-        let mut lex = lexer::Lexer::new();
-        lex.load_bytes(buf.to_string());
-        let mut pars = parser::Parser::new(lex).unwrap();
-    let mut context = context::Context::new();
+        let mut pars = Parser::new().unwrap();
+        pars.load_bytes(buffer.to_string()).unwrap();
+        let mut context = context::Context::new();
 
         let mut v = Vec::new();
         loop {
@@ -210,19 +207,22 @@ fn test_trace_from_box() {
         ("a;~a;", "{~a}, {a} -> {}"),
         (
             "(~B|C) & ~(A&~B) & (A|((B|C)&~C)); ~(A&B&C);",
-            "{A, ~C}, {~A, ~B, ~C} -> {~B, ~C}
-{B, ~A}, {A, ~C} -> {B, ~C}
-{~B, ~C}, {B, ~C} -> {~C}
-{B, ~A}, {A, B, C} -> {B, C}
-{C, ~B}, {B, C} -> {C}
-{~C}, {C} -> {}",
+            "{B, ~A}, {~A, ~B, ~C} -> {~A, ~C}
+{C, ~B}, {B, ~A} -> {C, ~A}
+{~A, ~C}, {C, ~A} -> {~A}
+{C, ~B}, {A, B, C} -> {A, C}
+{A, ~C}, {A, C} -> {A}
+{~A}, {A} -> {}",
         ),
         ("(~(B&C)) & (A=>(C<=>B)) & (~C=>A) & (~B|(A=>~C));", ""),
+        ("a; a <=> b; 0 & ~1;", "{~a, ~b}, {b, ~a} -> {~a}
+{~a}, {a} -> {}"),
     ];
 
-    for (buf, exp) in tests {
+    for (buffer, exp) in tests {
+        // i want to context to reset every time
         let mut lex_test = lexer::Lexer::new();
-        lex_test.load_bytes(buf.to_string());
+        lex_test.load_bytes(buffer.to_string());
         let mut tokens = Vec::new();
         while let Ok(t) = lex_test.next_tok() {
             if t.kind() == token::Kind::Eof {
@@ -230,11 +230,9 @@ fn test_trace_from_box() {
             }
             tokens.push(Some(t));
         }
-
-        let mut lex = lexer::Lexer::new();
-        lex.load_bytes(buf.to_string());
-        let mut pars = parser::Parser::new(lex).unwrap();
-    let mut context = context::Context::new();
+        let mut pars = Parser::new().unwrap();
+        pars.load_bytes(buffer.to_string()).unwrap();
+        let mut context = context::Context::new();
 
         let mut v = Vec::new();
         loop {

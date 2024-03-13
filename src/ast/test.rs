@@ -13,6 +13,7 @@ x <=> y;
 ~x => ~y;
 x <=> y => z;
 x | y => z;
+(a & (~(a <=> b)));
 !
 ";
     let expected: &[&str] = &[
@@ -24,6 +25,7 @@ x | y => z;
         "(x | (~y))",
         "((x & ((~y) | z)) | ((~x) & (y & (~z))))",
         "(((~x) & (~y)) | z)",
+        "(a & ((a & (~b)) | ((~a) & b)))",
         "Execute",
         "Found end of file",
     ];
@@ -38,9 +40,8 @@ x | y => z;
         }
         tokens.push(Some(t));
     }
-    let mut lex = lexer::Lexer::new();
-    lex.load_bytes(buffer.to_string());
-    let mut pars = Parser::new(lex).unwrap();
+    let mut pars = Parser::new().unwrap();
+    pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
 
     for &exp in expected {
@@ -83,11 +84,10 @@ a & (b | c | (d & e & (f | g)));
         }
         tokens.push(Some(t));
     }
-    let mut lex = lexer::Lexer::new();
-    lex.load_bytes(buffer.to_string());
+    let mut pars = Parser::new().unwrap();
+    pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
 
-    let mut pars = Parser::new(lex).unwrap();
     for &exp in expected {
         // i suppose that the parser tests pass
         let parsed = pars.parse_statement_update_context(&mut context).unwrap();

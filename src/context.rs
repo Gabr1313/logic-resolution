@@ -11,8 +11,8 @@ pub struct InnerContext {
 
 impl InnerContext {
     fn new(formula: Rc<Formula>) -> Res<InnerContext> {
-        let x = formula.as_ref().clone().distribute()?;
-        let set_clauses = Rc::new(SetClauses::new(&x)?);
+        let dist = formula.as_ref().clone().distribute()?;
+        let set_clauses = Rc::new(SetClauses::new(&dist)?);
         Ok(InnerContext {
             formula,
             set_clauses,
@@ -36,7 +36,13 @@ impl Display for Context {
             .inner
             .iter()
             .enumerate()
-            .map(|(i, f)| format!("{i}: {} -> {}", f.formula.as_ref(), f.set_clauses().as_ref()))
+            .map(|(i, f)| {
+                format!(
+                    "{i}: {} -> {}",
+                    f.formula.as_ref(),
+                    f.set_clauses().as_ref()
+                )
+            })
             .reduce(|acc, s| format!("{acc}\n{s}"))
             .unwrap_or_default();
         write!(f, "{}", s)
@@ -66,5 +72,3 @@ impl Context {
         &self.inner
     }
 }
-
-// @test

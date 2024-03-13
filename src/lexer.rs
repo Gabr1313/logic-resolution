@@ -136,6 +136,8 @@ impl Lexer {
         if tok_kind == token::Kind::Invalid {
             Err(InvalidTokenErr::new(s.to_string(), init_row, init_col))
         } else {
+            // if I crate another instance of the string the comparison beetween 
+            // atoms does not work anymore
             Ok(if let Some(rc) = self.ids.get(s) {
                 token::Token::new(tok_kind, Rc::clone(rc), init_row, init_col)
             } else {

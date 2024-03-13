@@ -9,11 +9,25 @@ use std::rc::{Rc, Weak};
 #[cfg(test)]
 mod test;
 
-#[derive(Eq, Hash, PartialEq, Ord, PartialOrd, Clone)]
+#[derive(Hash, Ord, PartialOrd, Clone, Debug)]
+/// Equal is implementented using ptr
 pub enum Atom {
     Positive(Rc<String>),
     Negative(Rc<String>),
 }
+
+impl PartialEq for Atom {
+    fn eq(&self, other: &Self) -> bool {
+        if let (Atom::Positive(a), Atom::Positive(b)) = (self, other) {
+            a.as_ptr() == b.as_ptr()
+        } else if let (Atom::Negative(a), Atom::Negative(b)) = (self, other) {
+            a.as_ptr() == b.as_ptr()
+        } else {
+            false
+        }
+    }
+}
+impl Eq for Atom {}
 
 impl Atom {
     pub fn new_affermative(s: Rc<String>) -> Atom {
@@ -30,7 +44,7 @@ impl Atom {
     }
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Clone)]
+#[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Debug)]
 pub struct Clause {
     c: BTreeSet<Atom>,
 }
@@ -63,11 +77,8 @@ impl fmt::Display for Clause {
 }
 
 /// sort: positive before negative, then lexological order
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct SetClauses {
-    // @perf would it be better to use HashSets?
-    //       -> problem: print in tests would not be deterministic
-    //       -> problem: implementation (hash of HashSets does not exists
     // using a BTreeSet i should avoid duplicates
     bt: BTreeMap<Rc<Clause>, Option<(Weak<Clause>, Weak<Clause>)>>,
 }
@@ -158,11 +169,10 @@ impl SetClauses {
             ast::Formula::Unary(x) => {
                 debug_assert!(x.operator() == token::Kind::Not);
                 if let ast::Formula::Leaf(x) = x.right() {
-                    // @perf comparing 2 atoms is slow: it compares inner values of Rc (String)
-                    //       would it be better to use a progrssive number istead of String? or to
-                    //       use unsafe, save pointers and compare them?
                     // pruning: it is useless to have a clause like {!x, x, ...}
                     if bt.c.contains(&Atom::Positive(x.string())) {
+                        // comparing 2 atoms is not slow because it uses
+                        // pointers of the inner Rc value
                         false
                     } else {
                         bt.c.insert(Atom::Negative(x.string()));
@@ -216,35 +226,38 @@ impl SetClauses {
         });
     }
 
-    // @todo? Horn
+    // @todo? Horn... Nah, I don't think i will
     pub fn find_box(&mut self) -> bool {
         self.prune();
-        let empty = Clause::new();
         let mut previous_len = 0;
         while previous_len != self.bt.len() {
             previous_len = self.bt.len();
-            self.square();
-            if self.bt.contains_key(&empty) {
+            if self.square() {
                 return true;
             }
         }
         false
     }
 
-    // @todo break when box is found
-    fn square(&mut self) {
+    /// returns true if box if found
+    fn square(&mut self) -> bool {
         let mut new_clauses = SetClauses::default();
+        let mut found = false;
         for (i, c1) in self.bt.iter().enumerate() {
             // is skip efficient? magic...
             for c2 in self.bt.iter().skip(i) {
-                new_clauses.extend_solve(Rc::clone(c1.0), Rc::clone(c2.0), self);
+                found |= new_clauses.extend_solve(Rc::clone(c1.0), Rc::clone(c2.0), self);
+                if found {
+                    break;
+                }
             }
         }
         self.bt.extend(new_clauses.bt);
+        found
     }
 
-    // @todo break when box is found
-    fn extend_solve(&mut self, c1: Rc<Clause>, c2: Rc<Clause>, parent: &SetClauses) {
+    /// returns true if box if found
+    fn extend_solve(&mut self, c1: Rc<Clause>, c2: Rc<Clause>, parent: &SetClauses) -> bool {
         let (c1, c2) = if c1.c.len() < c2.c.len() {
             (c1, c2)
         } else {
@@ -256,14 +269,14 @@ impl SetClauses {
             if c2.c.contains(&opposite) {
                 match pp {
                     // pruning: it is useless to have a clause like {!x, x, ...}
-                    Some(_) => return,
+                    Some(_) => return false,
                     None => pp = Some((atom, opposite)),
                 }
             }
         }
         let (atom, opposite) = match pp {
             Some(x) => x,
-            None => return,
+            None => return false,
         };
         let new_clause: Clause =
             c1.c.iter()
@@ -273,12 +286,15 @@ impl SetClauses {
                 .collect::<BTreeSet<Atom>>()
                 .into();
 
+        let len = new_clause.c.len();
+        // suddenly extend substitutes new values to old ones
         if !parent.bt.contains_key(&new_clause) {
             self.bt.insert(
                 Rc::new(new_clause),
                 Some((Rc::downgrade(&c1), Rc::downgrade(&c2))),
             );
         }
+        len == 0
     }
 
     pub fn trace_from_box(&self) -> String {

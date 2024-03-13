@@ -15,9 +15,9 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(lex: lexer::Lexer) -> Res<Parser> {
+    pub fn new() -> Res<Parser> {
         let mut p = Parser {
-            lex,
+            lex: lexer::Lexer::new(),
             curr_tok: None,
             peek_tok: None,
         };
@@ -59,8 +59,7 @@ impl Parser {
         let retval = self.parse_statement(context)?;
         match retval {
             ast::Statement::Delete(n) => {
-                context.remove(n)?; // @todo return the removed value (the problem is that it is
-                                    // wrapped inside Rc<_>) so i can print it
+                context.remove(n)?;
                 Ok(retval)
             }
             ast::Statement::Formula(f) => {
@@ -71,8 +70,9 @@ impl Parser {
         }
     }
 
-    /// it skips only the first token if it is invalid
-    /// it does not skip what is there instead of ``
+    /// does NOT auto-update the context
+    /// skips only the first token if it is invalid
+    /// does not skip what is there instead of ``
     pub fn parse_statement(&mut self, context: &Context) -> Res<ast::Statement> {
         Ok(match self.curr_tok().kind() {
             token::Kind::Eof => ast::Statement::Eof,

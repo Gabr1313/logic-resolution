@@ -81,7 +81,6 @@ impl fmt::Display for Statement {
             f,
             "{}",
             match self {
-                // @test
                 Statement::Formula(f) => format!("{f}"),
                 Statement::Execute => format!("Execute"),
                 Statement::Query => format!("Query"),
@@ -204,7 +203,8 @@ impl Formula {
                         left.digest()?,
                         token::Kind::Equiv,
                         right.negate_digest()?,
-                    ),
+                    )
+                    .digest()?,
                     _ => {
                         return Err(InternalErrorTok::new(
                             token::Kind::Eof,
