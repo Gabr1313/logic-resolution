@@ -25,6 +25,7 @@ a!
 =>
 (x | y;
 exit;
+help;
 ";
     let expected: &[&str] = &[
         "x",
@@ -48,6 +49,7 @@ exit;
         "Parse error [19:7]: got=`;` (SemiColon): expected `)`",
         "Parse error [19:7]: got=`;` (SemiColon): not the beginning of a formula",
         "Exit",
+        "Help",
         "End of input",
     ];
 

@@ -66,6 +66,7 @@ pub enum Statement {
     Formula(Formula),
     Eoi,
     Exit,
+    Help,
     Execute,
     Query,
     Delete(usize),
@@ -89,6 +90,7 @@ impl fmt::Display for Statement {
                 Statement::Delete(n) => format!("Delete {n}"),
                 Statement::Eoi => format!("End of input"),
                 Statement::Exit => format!("Exit"),
+                Statement::Help => format!("Help"),
             }
         )
     }

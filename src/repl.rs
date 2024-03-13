@@ -2,6 +2,7 @@ use crate::ast::Statement;
 use crate::clause::SetClauses;
 use crate::context;
 use crate::error::Res;
+use crate::help;
 use crate::parser;
 use std::fs::File;
 use std::io::Read;
@@ -13,6 +14,7 @@ pub fn repl() -> Res<()> {
     let stdin = io::stdin();
     let mut pars = parser::Parser::new()?;
     let mut context = context::Context::new();
+    println!("Type `help;`");
     print!("{}", PROMPT);
     io::stdout().flush()?;
     for line in stdin.lines() {
@@ -49,6 +51,7 @@ fn eval_print(
             match pars.parse_statement_update_context(context) {
                 Ok(Statement::Eoi) => break,
                 Ok(Statement::Exit) => return Ok(true),
+                Ok(Statement::Help) => println!("{}", help::help()),
                 Ok(Statement::Delete(n)) => println!("Formula {n} removed."),
                 Ok(Statement::Query) => println!("{}", context),
                 Ok(Statement::Execute) => {

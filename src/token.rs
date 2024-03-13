@@ -18,6 +18,7 @@ pub enum Kind {
     Number,
     Minus,
     Exit,
+    Help,
 }
 
 impl Kind {
@@ -53,6 +54,7 @@ impl Kind {
             Kind::Question => "?",
             Kind::Minus => "-",
             Kind::Exit => "EXIT",
+            Kind::Help => "HELP",
         }
     }
 }

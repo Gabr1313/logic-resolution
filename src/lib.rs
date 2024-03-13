@@ -6,3 +6,4 @@ pub mod parser;
 pub mod ast;
 pub mod clause;
 pub mod context;
+pub mod help;

@@ -12,4 +12,4 @@ fn main() -> Res<()> {
     Ok(())
 }
 
-// @todo help
+// @todo remove the necessity of `;`

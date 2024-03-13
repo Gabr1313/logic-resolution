@@ -143,13 +143,15 @@ impl Lexer {
             } else {
                 let s = s.to_string();
                 let rc = Rc::new(s.clone());
-                if s == "exit" {
-                    // up to now there is only 1 keyword, so I don't worry that much
-                    // an HashMap would be a good alternative
-                    token::Token::new(token::Kind::Exit, rc, init_row, init_col)
-                } else {
-                    self.ids.insert(s, Rc::clone(&rc));
-                    token::Token::new(tok_kind, rc, init_row, init_col)
+                // up to now there are only 2 keyword, so I don't worry that much
+                // an HashMap would be a good alternative
+                match s.as_str() {
+                    "exit" => token::Token::new(token::Kind::Exit, rc, init_row, init_col),
+                    "help" => token::Token::new(token::Kind::Help, rc, init_row, init_col),
+                    _ => {
+                        self.ids.insert(s, Rc::clone(&rc));
+                        token::Token::new(tok_kind, rc, init_row, init_col)
+                    }
                 }
             })
         }

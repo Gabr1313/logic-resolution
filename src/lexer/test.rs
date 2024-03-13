@@ -23,6 +23,7 @@ is_al_num <=> Is_Al_NuM
 x <y
 ^
 exit
+help
 ";
     let expected: &[Res<token::Token>] = &[
         Ok(token::Token::new(
@@ -275,9 +276,15 @@ exit
             1,
         )),
         Ok(token::Token::new(
+            token::Kind::Help,
+            Rc::new("help".to_string()),
+            18,
+            1,
+        )),
+        Ok(token::Token::new(
             token::Kind::Eoi,
             Rc::new("".to_string()),
-            18,
+            19,
             1,
         )),
     ];

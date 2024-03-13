@@ -96,6 +96,17 @@ impl Parser {
                 self.skip_tok()?;
                 ast::Statement::Exit
             }
+            token::Kind::Help => {
+                self.skip_tok()?;
+                if self.curr_tok().kind() != token::Kind::SemiColon {
+                    return Err(ParseErr::new(
+                        self.curr_tok().clone(),
+                        format!("expected `{}`", token::Kind::SemiColon),
+                    ));
+                }
+                self.skip_tok()?;
+                ast::Statement::Help
+            }
             _ => {
                 let stat = self.recursive_pratt(0, context)?;
                 if self.curr_tok().kind() != token::Kind::SemiColon {
