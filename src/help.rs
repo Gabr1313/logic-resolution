@@ -17,6 +17,7 @@ There also exists some special operators and keywords:
     `-1;`       means \"delete formula_1\" 
     `0 <=> ~1;` means \"formula_0 if and only if not formula_1\"
     `exit;`     means \"exit the program\"
-    `help;`     means \"print this menu\"\
+    `help;`     means \"print this menu\"
+Finally you can call the program followed by file_name\
 "
 }

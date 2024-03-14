@@ -12,4 +12,4 @@ fn main() -> Res<()> {
     Ok(())
 }
 
-// @todo remove the necessity of `;`
+// @todo Rc<[str]>

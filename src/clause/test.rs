@@ -9,13 +9,13 @@ use crate::{
 #[test]
 fn test_clauses() {
     let buffer = "
-x;
-~x;
+x
+~x
 a | a;
-a & a;
+a & a
 a <=> b;
 a | (b & c & (d | e | (f & g)));
-a & (b | c | (d & e & (f | g)));
+a & (b | c | (d & e & (f | g)))
 (b | ((a | ~a) | (c | ~d)));
 ";
     let expected: &[&str] = &[
@@ -27,7 +27,7 @@ a & (b | c | (d & e & (f | g)));
         "{{a, b}, {a, c}, {a, d, e, f}, {a, d, e, g}}",
         "{{a}, {b, c, d}, {b, c, e}, {b, c, f, g}}",
         "{}",
-        "End of input",
+        "END OF INPUT",
     ];
 
     // i suppose that the lexer tests pass
@@ -65,9 +65,9 @@ fn test_merge() {
     let test = (
         "
 a | a;
-a & a;
-a & b;
-b & a;
+a & a
+a & b
+b & a
 a | b;
 b | a;
 ",
@@ -114,7 +114,7 @@ b | a;
 
 #[test]
 fn test_prune() {
-    let test = (" a | b; b | c; c | ~a; ~c | a; ", "{{a, ~c}, {c, ~a}}");
+    let test = (" a | b; b | c; c | ~a; ~c | a;", "{{a, ~c}, {c, ~a}}");
     let (buffer, expected) = test;
 
     let mut lex_test = lexer::Lexer::new();
@@ -157,9 +157,9 @@ fn test_prune() {
 #[test]
 fn test_find_box() {
     let tests = &[
-        ("a;", false),
-        ("a;~a;", true),
-        ("(~B|C) & ~(A&~B) & (A|((B|C)&~C)); ~(A&B&C);", true),
+        ("a", false),
+        ("a;~a", true),
+        ("(~B|C) & ~(A&~B) & (A|((B|C)&~C)); ~(A&B&C)", true),
         ("(~(B&C)) & (A=>(C<=>B)) & (~C=>A) & (~B|(A=>~C));", false),
     ];
 
@@ -204,7 +204,7 @@ fn test_find_box() {
 fn test_trace_from_box() {
     let tests = &[
         ("a;", ""),
-        ("a;~a;", "{~a}, {a} -> {}"),
+        ("a;~a", "{~a}, {a} -> {}"),
         (
             "(~B|C) & ~(A&~B) & (A|((B|C)&~C)); ~(A&B&C);",
             "{B, ~A}, {~A, ~B, ~C} -> {~A, ~C}

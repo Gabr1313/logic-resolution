@@ -53,13 +53,13 @@ impl Lexer {
 
     /// self.pos -> first unread char
     pub fn next_tok(&mut self) -> Res<token::Token> {
-        self.skip_while(is_whitespace);
+        self.skip_while(is_space);
         let (init_pos, init_col, init_row) = (self.pos, self.col, self.row);
         let tok_kind = match self.ch() {
             None => token::Kind::Eoi,
-            Some(b';') => {
+            Some(b';') | Some(b'\x0C') | Some(b'\r') | Some(b'\n') => {
                 self.skip_ch();
-                token::Kind::SemiColon
+                token::Kind::Separator
             }
             Some(b'(') => {
                 self.skip_ch();
@@ -99,7 +99,7 @@ impl Lexer {
                     token::Kind::Implies
                 }
                 _ => {
-                    self.skip_while(is_not_alphanumeric_whitespace);
+                    self.skip_while(is_not_alphanumeric_space);
                     token::Kind::Invalid
                 }
             },
@@ -110,12 +110,12 @@ impl Lexer {
                         token::Kind::Equiv
                     }
                     _ => {
-                        self.skip_while(is_not_alphanumeric_whitespace);
+                        self.skip_while(is_not_alphanumeric_space);
                         token::Kind::Invalid
                     }
                 },
                 _ => {
-                    self.skip_while(is_not_alphanumeric_whitespace);
+                    self.skip_while(is_not_alphanumeric_space);
                     token::Kind::Invalid
                 }
             },
@@ -128,7 +128,7 @@ impl Lexer {
                 token::Kind::Identifier
             }
             _ => {
-                self.skip_while(is_not_whitespace);
+                self.skip_ch();
                 token::Kind::Invalid
             }
         };
@@ -181,14 +181,10 @@ fn is_digit(c: u8) -> bool {
     c.is_ascii_digit()
 }
 
-fn is_whitespace(c: u8) -> bool {
-    c.is_ascii_whitespace()
+fn is_space(c: u8) -> bool {
+    c == b' ' || c == b'\t'
 }
 
-fn is_not_whitespace(c: u8) -> bool {
-    !is_whitespace(c)
-}
-
-fn is_not_alphanumeric_whitespace(c: u8) -> bool {
-    !is_whitespace(c) && !is_alphanumeric(c)
+fn is_not_alphanumeric_space(c: u8) -> bool {
+    !is_space(c) && !is_alphanumeric(c)
 }

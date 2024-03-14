@@ -6,10 +6,10 @@ use super::Statement;
 fn test_digest() {
     let buffer = "
 ~x;
-x & y;
+x & y
 x | y;
-x => y;
-x <=> y;
+x => y
+x <=> y
 ~x => ~y;
 x <=> y => z;
 x | y => z;
@@ -26,8 +26,8 @@ x | y => z;
         "((x & ((~y) | z)) | ((~x) & (y & (~z))))",
         "(((~x) & (~y)) | z)",
         "(a & ((a & (~b)) | ((~a) & b)))",
-        "Execute",
-        "End of input",
+        "EXECUTE",
+        "END OF INPUT",
     ];
 
     // i suppose that the lexer tests pass
@@ -64,9 +64,9 @@ x | y => z;
 #[test]
 fn test_distribute() {
     let buffer = "
-x <=> y;
+x <=> y
 a | (b & c & (d | e | (f & g)));
-a & (b | c | (d & e & (f | g)));
+a & (b | c | (d & e & (f | g)))
 ";
     let expected: &[&str] = &[
         "(((x | (~x)) & (x | (~y))) & ((y | (~x)) & (y | (~y))))",

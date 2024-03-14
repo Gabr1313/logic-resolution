@@ -74,6 +74,9 @@ impl Parser {
     /// skips only the first token if it is invalid
     /// does not skip what is there instead of ``
     pub fn parse_statement(&mut self, context: &Context) -> Res<ast::Statement> {
+        while self.curr_tok().kind() == token::Kind::Separator {
+            self.skip_tok()?;
+        }
         Ok(match self.curr_tok().kind() {
             token::Kind::Eoi => ast::Statement::Eoi,
             token::Kind::Bang => {
@@ -87,10 +90,10 @@ impl Parser {
             token::Kind::Minus => self.parse_delete()?,
             token::Kind::Exit => {
                 self.skip_tok()?;
-                if self.curr_tok().kind() != token::Kind::SemiColon {
+                if !self.curr_tok().kind().is_sep() {
                     return Err(ParseErr::new(
                         self.curr_tok().clone(),
-                        format!("expected `{}`", token::Kind::SemiColon),
+                        format!("expected `{}`", token::Kind::Separator), // or Eoi
                     ));
                 }
                 self.skip_tok()?;
@@ -98,10 +101,10 @@ impl Parser {
             }
             token::Kind::Help => {
                 self.skip_tok()?;
-                if self.curr_tok().kind() != token::Kind::SemiColon {
+                if !self.curr_tok().kind().is_sep() {
                     return Err(ParseErr::new(
                         self.curr_tok().clone(),
-                        format!("expected `{}`", token::Kind::SemiColon),
+                        format!("expected `{}`", token::Kind::Separator), // or Eoi
                     ));
                 }
                 self.skip_tok()?;
@@ -109,10 +112,10 @@ impl Parser {
             }
             _ => {
                 let stat = self.recursive_pratt(0, context)?;
-                if self.curr_tok().kind() != token::Kind::SemiColon {
+                if !self.curr_tok().kind().is_sep() {
                     return Err(ParseErr::new(
                         self.curr_tok().clone(),
-                        format!("expected `{}`", token::Kind::SemiColon),
+                        format!("expected `{}`", token::Kind::Separator), // or Eoi
                     ));
                 }
                 self.skip_tok()?;
@@ -167,13 +170,13 @@ impl Parser {
         self.skip_tok()?;
         if self.curr_tok().kind() == token::Kind::Number {
             let n = self.skip_tok()?.literal().as_ref().parse()?;
-            if self.curr_tok().kind() == token::Kind::SemiColon {
+            if self.curr_tok().kind().is_sep() {
                 self.skip_tok()?;
                 Ok(ast::Statement::Delete(n))
             } else {
                 Err(ParseErr::new(
                     self.curr_tok().clone(),
-                    format!("expected `{}`", token::Kind::SemiColon),
+                    format!("expected `{}`", token::Kind::Separator),
                 ))
             }
         } else {

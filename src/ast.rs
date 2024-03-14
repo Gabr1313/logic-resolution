@@ -85,12 +85,12 @@ impl fmt::Display for Statement {
             "{}",
             match self {
                 Statement::Formula(f) => format!("{f}"),
-                Statement::Execute => format!("Execute"),
-                Statement::Query => format!("Query"),
-                Statement::Delete(n) => format!("Delete {n}"),
-                Statement::Eoi => format!("End of input"),
-                Statement::Exit => format!("Exit"),
-                Statement::Help => format!("Help"),
+                Statement::Execute => format!("EXECUTE"),
+                Statement::Query => format!("QUERY"),
+                Statement::Delete(n) => format!("DELETE {n}"),
+                Statement::Eoi => format!("END OF INPUT"),
+                Statement::Exit => format!("EXIT"),
+                Statement::Help => format!("HELP"),
             }
         )
     }

@@ -4,6 +4,7 @@ use std::{fmt, rc::Rc};
 pub enum Kind {
     Invalid,
     Eoi,
+    Separator,
     Identifier,
     ParenL,
     ParenR,
@@ -12,7 +13,6 @@ pub enum Kind {
     Not,
     Implies,
     Equiv,
-    SemiColon,
     Bang,
     Question,
     Number,
@@ -30,7 +30,7 @@ impl Kind {
             Kind::Or => 5,
             Kind::Implies => 4,
             Kind::Equiv => 3,
-            Kind::Invalid | Kind::Eoi => 1,
+            Kind::Invalid | Kind::Eoi => 1, // @todo remove
             _ => 2,
         }
     }
@@ -39,7 +39,8 @@ impl Kind {
     pub fn as_str(&self) -> &str {
         match &self {
             Kind::Invalid => "INVALID",
-            Kind::Eoi => "EOI",
+            Kind::Eoi => "END OF INPUT",
+            Kind::Separator => "SEPARATOR",
             Kind::Identifier => "IDENTIFIER",
             Kind::Number => "NUMBER",
             Kind::ParenL => "(",
@@ -49,13 +50,16 @@ impl Kind {
             Kind::Not => "~",
             Kind::Implies => "=>",
             Kind::Equiv => "<=>",
-            Kind::SemiColon => ";",
             Kind::Bang => "!",
             Kind::Question => "?",
             Kind::Minus => "-",
             Kind::Exit => "EXIT",
             Kind::Help => "HELP",
         }
+    }
+
+    pub fn is_sep(&self) -> bool {
+        *self == Kind::Separator || *self == Kind::Eoi
     }
 }
 

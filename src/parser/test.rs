@@ -7,18 +7,18 @@ use crate::token;
 fn test_parser() {
     let buffer = "
 x;
-~x;
+~x
 x => y;
-x | y;
-x | y | z;
+x | y
+x | y | z
 ((x | y) | z);
 (x | (y | z));
-x & y;
+x & y
 x <=> y;
 ((x | y)) & z;
 x <=> y => z | w & ~v;
-~x & y | z => w <=> v;
-~x | (y | z) <=> ~w => v & b;
+~x & y | z => w <=> v
+~x | (y | z) <=> ~w => v & b
 ~(a&b&d);
 !
 a!
@@ -42,15 +42,14 @@ help;
         "(((((~x) & y) | z) => w) <=> v)",
         "(((~x) | (y | z)) <=> ((~w) => (v & b)))",
         "(~((a & b) & d))",
-        "Execute",
-        "Parse error [17:2]: got=`!` (Bang): expected `;`",
-        "Execute",
+        "EXECUTE",
+        "Parse error [17:2]: got=`!` (Bang): expected `SEPARATOR`",
+        "EXECUTE",
         "Parse error [18:1]: got=`=>` (Implies): not the beginning of a formula",
-        "Parse error [19:7]: got=`;` (SemiColon): expected `)`",
-        "Parse error [19:7]: got=`;` (SemiColon): not the beginning of a formula",
-        "Exit",
-        "Help",
-        "End of input",
+        "Parse error [19:7]: got=`;` (Separator): expected `)`",
+        "EXIT",
+        "HELP",
+        "END OF INPUT",
     ];
 
     // i suppose that the lexer tests pass
@@ -82,10 +81,10 @@ help;
 fn test_parser_context() {
     let buffer = "
 x;
-~y;
-0 => ~1;
+~y
+0 => ~1
 ?
--0;
+-0
 -1;
 ";
     let expected: &[&str] = &[
@@ -98,14 +97,14 @@ x;
 0: x -> {{x}}
 1: (~y) -> {{~y}}
 2: (x => (~(~y))) -> {{y, ~x}}",
-        "Query
+        "QUERY
 0: x -> {{x}}
 1: (~y) -> {{~y}}
 2: (x => (~(~y))) -> {{y, ~x}}",
-        "Delete 0
+        "DELETE 0
 0: (~y) -> {{~y}}
 1: (x => (~(~y))) -> {{y, ~x}}",
-        "Delete 1
+        "DELETE 1
 0: (~y) -> {{~y}}",
     ];
 
