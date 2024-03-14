@@ -190,9 +190,9 @@ impl Formula {
                         right.negate_digest()?,
                     ),
                     token::Kind::Equiv => Formula::new_binary(
-                        left.digest()?,
+                        left,
                         token::Kind::Equiv,
-                        right.negate_digest()?,
+                        Formula::new_unary(token::Kind::Not, right),
                     )
                     .digest()?,
                     _ => panic!("not a valid binary operator"),
