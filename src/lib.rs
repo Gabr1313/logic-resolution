@@ -1,9 +1,9 @@
-pub mod error;
-pub mod lexer;
-pub mod token;
-pub mod repl;
-pub mod parser;
 pub mod ast;
 pub mod clause;
 pub mod context;
+pub mod error;
 pub mod help;
+pub mod lexer;
+pub mod parser;
+pub mod repl;
+pub mod token;

@@ -1,10 +1,5 @@
 use super::SetClauses;
-use crate::{
-    ast::{self, Statement},
-    context, lexer,
-    parser::Parser,
-    token,
-};
+use crate::{ast::Statement, context::Context, parser::Parser};
 
 #[test]
 fn test_clauses() {
@@ -30,27 +25,15 @@ a & (b | c | (d & e & (f | g)))
         "END OF INPUT",
     ];
 
-    // i suppose that the lexer tests pass
-    let mut lex_test = lexer::Lexer::new();
-    lex_test.load_bytes(buffer.to_string());
-    let mut tokens = Vec::new();
-    while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eoi {
-            break;
-        }
-        tokens.push(Some(t));
-    }
     let mut pars = Parser::new().unwrap();
     pars.load_bytes(buffer.to_string()).unwrap();
-    let mut context = context::Context::new();
+    let mut context = Context::new();
 
     for &exp in expected {
         let parsed = pars.parse_statement_update_context(&mut context).unwrap();
-        let s = if let ast::Statement::Formula(f) = parsed {
-            match SetClauses::new(&f.distribute().unwrap()) {
-                Ok(s) => format!("{s}"),
-                Err(s) => format!("{s}"),
-            }
+        let s = if let Statement::Formula(formula) = parsed {
+            let c: SetClauses = (&formula.distribute().unwrap()).into();
+            format!("{c}")
         } else {
             format!("{parsed}")
         };
@@ -75,37 +58,23 @@ b | a;
     );
     let (buffer, expected) = test;
 
-    // i suppose that the lexer tests pass
-    let mut lex_test = lexer::Lexer::new();
-    lex_test.load_bytes(buffer.to_string());
-    let mut tokens = Vec::new();
-    while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eoi {
-            break;
-        }
-        tokens.push(Some(t));
-    }
     let mut pars = Parser::new().unwrap();
     pars.load_bytes(buffer.to_string()).unwrap();
-    let mut context = context::Context::new();
+    let mut context = Context::new();
 
     let mut v = Vec::new();
     loop {
         match pars.parse_statement_update_context(&mut context) {
             Ok(Statement::Eoi) => break,
             Ok(Statement::Formula(formula)) => {
-                let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
+                let c: SetClauses = (&formula.distribute().unwrap()).into();
                 v.push(c);
             }
-            Err(err) => {
-                panic!("{}", err);
-            }
-            Ok(p) => {
-                panic!("{}", p);
-            }
+            Err(err) => panic!("{}", err),
+            Ok(p) => panic!("{}", p),
         }
     }
-    let t = SetClauses::merge(v);
+    let t: SetClauses = v.into();
     let s = t.to_string();
     if expected != s {
         panic!("expected=`{expected}`\ngot     =`{s}`")
@@ -117,36 +86,23 @@ fn test_prune() {
     let test = (" a | b; b | c; c | ~a; ~c | a;", "{{a, ~c}, {c, ~a}}");
     let (buffer, expected) = test;
 
-    let mut lex_test = lexer::Lexer::new();
-    lex_test.load_bytes(buffer.to_string());
-    let mut tokens = Vec::new();
-    while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eoi {
-            break;
-        }
-        tokens.push(Some(t));
-    }
     let mut pars = Parser::new().unwrap();
     pars.load_bytes(buffer.to_string()).unwrap();
-    let mut context = context::Context::new();
+    let mut context = Context::new();
 
     let mut v = Vec::new();
     loop {
         match pars.parse_statement_update_context(&mut context) {
             Ok(Statement::Eoi) => break,
             Ok(Statement::Formula(formula)) => {
-                let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
+                let c: SetClauses = (&formula.distribute().unwrap()).into();
                 v.push(c);
             }
-            Err(err) => {
-                panic!("{}", err);
-            }
-            Ok(p) => {
-                panic!("{}", p);
-            }
+            Err(err) => panic!("{}", err),
+            Ok(p) => panic!("{}", p),
         }
     }
-    let mut t = SetClauses::merge(v);
+    let mut t: SetClauses = v.into();
     t.prune();
     let s = t.to_string();
     if expected != s {
@@ -164,25 +120,16 @@ fn test_find_box() {
     ];
 
     for (buffer, exp) in tests {
-        let mut lex_test = lexer::Lexer::new();
-        lex_test.load_bytes(buffer.to_string());
-        let mut tokens = Vec::new();
-        while let Ok(t) = lex_test.next_tok() {
-            if t.kind() == token::Kind::Eoi {
-                break;
-            }
-            tokens.push(Some(t));
-        }
         let mut pars = Parser::new().unwrap();
         pars.load_bytes(buffer.to_string()).unwrap();
-        let mut context = context::Context::new();
+        let mut context = Context::new();
 
         let mut v = Vec::new();
         loop {
             match pars.parse_statement_update_context(&mut context) {
                 Ok(Statement::Eoi) => break,
                 Ok(Statement::Formula(formula)) => {
-                    let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
+                    let c: SetClauses = (&formula.distribute().unwrap()).into();
                     v.push(c);
                 }
                 Err(err) => {
@@ -193,7 +140,7 @@ fn test_find_box() {
                 }
             }
         }
-        let mut t = SetClauses::merge(v);
+        let mut t: SetClauses = v.into();
         if *exp != t.find_box() {
             panic!("expected=`{exp}`\ngot     =`{}`", !exp)
         }
@@ -215,31 +162,24 @@ fn test_trace_from_box() {
 {~A}, {A} -> {}",
         ),
         ("(~(B&C)) & (A=>(C<=>B)) & (~C=>A) & (~B|(A=>~C));", ""),
-        ("a; a <=> b; 0 & ~1;", "{~a, ~b}, {b, ~a} -> {~a}
-{~a}, {a} -> {}"),
+        (
+            "a; a <=> b; 0 & ~1;",
+            "{~a, ~b}, {b, ~a} -> {~a}
+{~a}, {a} -> {}",
+        ),
     ];
 
     for (buffer, exp) in tests {
-        // i want to context to reset every time
-        let mut lex_test = lexer::Lexer::new();
-        lex_test.load_bytes(buffer.to_string());
-        let mut tokens = Vec::new();
-        while let Ok(t) = lex_test.next_tok() {
-            if t.kind() == token::Kind::Eoi {
-                break;
-            }
-            tokens.push(Some(t));
-        }
         let mut pars = Parser::new().unwrap();
         pars.load_bytes(buffer.to_string()).unwrap();
-        let mut context = context::Context::new();
+        let mut context = Context::new();
 
         let mut v = Vec::new();
         loop {
             match pars.parse_statement_update_context(&mut context) {
                 Ok(Statement::Eoi) => break,
                 Ok(Statement::Formula(formula)) => {
-                    let c = SetClauses::new(&formula.distribute().unwrap()).unwrap();
+                    let c: SetClauses = (&formula.distribute().unwrap()).into();
                     v.push(c);
                 }
                 Err(err) => {
@@ -250,7 +190,7 @@ fn test_trace_from_box() {
                 }
             }
         }
-        let mut t = SetClauses::merge(v);
+        let mut t: SetClauses = v.into();
         t.find_box();
         let trace = t.trace_from_box();
         if *exp != &trace {

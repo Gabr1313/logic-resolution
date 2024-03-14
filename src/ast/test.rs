@@ -1,4 +1,4 @@
-use crate::{context, lexer, parser::Parser, token};
+use crate::{context, parser::Parser};
 
 use super::Statement;
 
@@ -30,22 +30,11 @@ x | y => z;
         "END OF INPUT",
     ];
 
-    // i suppose that the lexer tests pass
-    let mut lex_test = lexer::Lexer::new();
-    lex_test.load_bytes(buffer.to_string());
-    let mut tokens = Vec::new();
-    while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eoi {
-            break;
-        }
-        tokens.push(Some(t));
-    }
     let mut pars = Parser::new().unwrap();
     pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
 
     for &exp in expected {
-        // i suppose that the parser tests pass
         let parsed = pars.parse_statement_update_context(&mut context).unwrap();
         let l = if let Statement::Formula(f) = parsed {
             match f.digest() {
@@ -74,22 +63,11 @@ a & (b | c | (d & e & (f | g)))
         "(a & ((((b | c) | d) & ((b | c) | e)) & ((b | c) | (f | g))))",
     ];
 
-    // i suppose that the lexer tests pass
-    let mut lex_test = lexer::Lexer::new();
-    lex_test.load_bytes(buffer.to_string());
-    let mut tokens = Vec::new();
-    while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eoi {
-            break;
-        }
-        tokens.push(Some(t));
-    }
     let mut pars = Parser::new().unwrap();
     pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
 
     for &exp in expected {
-        // i suppose that the parser tests pass
         let parsed = pars.parse_statement_update_context(&mut context).unwrap();
         let l = if let Statement::Formula(f) = parsed {
             match f.distribute() {

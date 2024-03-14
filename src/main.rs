@@ -11,5 +11,3 @@ fn main() -> Res<()> {
     }
     Ok(())
 }
-
-// @todo Rc<[str]>

@@ -57,65 +57,32 @@ impl Lexer {
         let (init_pos, init_col, init_row) = (self.pos, self.col, self.row);
         let tok_kind = match self.ch() {
             None => token::Kind::Eoi,
-            Some(b';') | Some(b'\x0C') | Some(b'\r') | Some(b'\n') => {
-                self.skip_ch();
-                token::Kind::Separator
-            }
-            Some(b'(') => {
-                self.skip_ch();
-                token::Kind::ParenL
-            }
-            Some(b')') => {
-                self.skip_ch();
-                token::Kind::ParenR
-            }
-            Some(b'&') => {
-                self.skip_ch();
-                token::Kind::And
-            }
-            Some(b'|') => {
-                self.skip_ch();
-                token::Kind::Or
-            }
-            Some(b'~') => {
-                self.skip_ch();
-                token::Kind::Not
-            }
-            Some(b'!') => {
-                self.skip_ch();
-                token::Kind::Bang
-            }
-            Some(b'?') => {
-                self.skip_ch();
-                token::Kind::Question
-            }
-            Some(b'-') => {
-                self.skip_ch();
-                token::Kind::Minus
-            }
+            Some(b';') | Some(b'\x0C') | Some(b'\r') | Some(b'\n') => token::Kind::Separator,
+            Some(b'(') => token::Kind::ParenL,
+            Some(b')') => token::Kind::ParenR,
+            Some(b'&') => token::Kind::And,
+            Some(b'|') => token::Kind::Or,
+            Some(b'~') => token::Kind::Not,
+            Some(b'!') => token::Kind::Bang,
+            Some(b'?') => token::Kind::Question,
+            Some(b'-') => token::Kind::Minus,
             Some(b'=') => match self.skip_ch() {
-                Some(b'>') => {
-                    self.skip_ch();
-                    token::Kind::Implies
-                }
+                Some(b'>') => token::Kind::Implies,
                 _ => {
-                    self.skip_while(is_not_alphanumeric_space);
+                    self.skip_while(is_invalid);
                     token::Kind::Invalid
                 }
             },
             Some(b'<') => match self.skip_ch() {
                 Some(b'=') => match self.skip_ch() {
-                    Some(b'>') => {
-                        self.skip_ch();
-                        token::Kind::Equiv
-                    }
+                    Some(b'>') => token::Kind::Equiv,
                     _ => {
-                        self.skip_while(is_not_alphanumeric_space);
+                        self.skip_while(is_invalid);
                         token::Kind::Invalid
                     }
                 },
                 _ => {
-                    self.skip_while(is_not_alphanumeric_space);
+                    self.skip_while(is_invalid);
                     token::Kind::Invalid
                 }
             },
@@ -128,23 +95,35 @@ impl Lexer {
                 token::Kind::Identifier
             }
             _ => {
-                self.skip_ch();
+                self.skip_while(is_invalid);
                 token::Kind::Invalid
             }
         };
+
+        match tok_kind {
+            token::Kind::Eoi
+            | token::Kind::Invalid
+            | token::Kind::Number
+            | token::Kind::Identifier => {}
+            _ => {
+                self.skip_ch();
+            }
+        };
+
         let s = &self.buffer[init_pos..self.pos];
+
         if tok_kind == token::Kind::Invalid {
             Err(InvalidTokenErr::new(s.to_string(), init_row, init_col))
         } else {
-            // if I crate another instance of the string the comparison beetween
-            // atoms does not work anymore
+            // ! if I crate another instance of the string the comparison
+            // beetween atoms does not work anymore
             Ok(if let Some(rc) = self.ids.get(s) {
                 token::Token::new(tok_kind, Rc::clone(rc), init_row, init_col)
             } else {
                 let rc = s.into();
-                // up to now there are only 2 keyword, so I don't worry that much
-                // an HashMap would be a good alternative
                 match s {
+                    // up to now there are only 2 keyword, so I don't worry that much
+                    // an HashMap would be a good alternative
                     "exit" => token::Token::new(token::Kind::Exit, rc, init_row, init_col),
                     "help" => token::Token::new(token::Kind::Help, rc, init_row, init_col),
                     _ => {
@@ -158,11 +137,6 @@ impl Lexer {
 
     /// self.pos -> after f
     fn skip_while(&mut self, f: fn(u8) -> bool) {
-        if let Some(c) = self.ch() {
-            if !f(c) {
-                return;
-            }
-        }
         while let Some(c) = self.ch() {
             if !f(c) {
                 return;
@@ -184,6 +158,6 @@ fn is_space(c: u8) -> bool {
     c == b' ' || c == b'\t'
 }
 
-fn is_not_alphanumeric_space(c: u8) -> bool {
-    !is_space(c) && !is_alphanumeric(c)
+fn is_invalid(c: u8) -> bool {
+    !c.is_ascii_whitespace()
 }

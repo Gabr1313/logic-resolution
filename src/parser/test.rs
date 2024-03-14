@@ -1,7 +1,5 @@
 use super::Parser;
 use crate::context;
-use crate::lexer;
-use crate::token;
 
 #[test]
 fn test_parser() {
@@ -52,16 +50,6 @@ help;
         "END OF INPUT",
     ];
 
-    // i suppose that the lexer tests pass
-    let mut lex_test = lexer::Lexer::new();
-    lex_test.load_bytes(buffer.to_string());
-    let mut tokens = Vec::new();
-    while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eoi {
-            break;
-        }
-        tokens.push(Some(t));
-    }
     let mut pars = Parser::new().unwrap();
     pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();
@@ -108,16 +96,6 @@ x;
 0: (~y) -> {{~y}}",
     ];
 
-    // i suppose that the lexer tests pass
-    let mut lex_test = lexer::Lexer::new();
-    lex_test.load_bytes(buffer.to_string());
-    let mut tokens = Vec::new();
-    while let Ok(t) = lex_test.next_tok() {
-        if t.kind() == token::Kind::Eoi {
-            break;
-        }
-        tokens.push(Some(t));
-    }
     let mut pars = Parser::new().unwrap();
     pars.load_bytes(buffer.to_string()).unwrap();
     let mut context = context::Context::new();

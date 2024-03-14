@@ -26,10 +26,10 @@ impl Parser {
     }
 
     fn init(&mut self) -> Res<()> {
-        self.curr_tok = self.peek_tok.take();
-        self.peek_tok = Some(self.lex.next_tok()?);
-        self.curr_tok = self.peek_tok.take();
-        self.peek_tok = Some(self.lex.next_tok()?);
+        for _ in 0..2 {
+            self.curr_tok = self.peek_tok.take();
+            self.peek_tok = Some(self.lex.next_tok()?);
+        }
         Ok(())
     }
 
@@ -63,7 +63,7 @@ impl Parser {
                 Ok(retval)
             }
             ast::Statement::Formula(f) => {
-                context.push(Rc::new(f.clone()))?;
+                context.push(Rc::new(f.clone()))?; // it uses Rc::clone() inside
                 Ok(f.into())
             }
             _ => Ok(retval),
@@ -90,38 +90,31 @@ impl Parser {
             token::Kind::Minus => self.parse_delete()?,
             token::Kind::Exit => {
                 self.skip_tok()?;
-                if !self.curr_tok().kind().is_sep() {
-                    return Err(ParseErr::new(
-                        self.curr_tok().clone(),
-                        format!("expected `{}`", token::Kind::Separator), // or Eoi
-                    ));
-                }
-                self.skip_tok()?;
+                self.check_sep()?;
                 ast::Statement::Exit
             }
             token::Kind::Help => {
                 self.skip_tok()?;
-                if !self.curr_tok().kind().is_sep() {
-                    return Err(ParseErr::new(
-                        self.curr_tok().clone(),
-                        format!("expected `{}`", token::Kind::Separator), // or Eoi
-                    ));
-                }
-                self.skip_tok()?;
+                self.check_sep()?;
                 ast::Statement::Help
             }
             _ => {
                 let stat = self.recursive_pratt(0, context)?;
-                if !self.curr_tok().kind().is_sep() {
-                    return Err(ParseErr::new(
-                        self.curr_tok().clone(),
-                        format!("expected `{}`", token::Kind::Separator), // or Eoi
-                    ));
-                }
-                self.skip_tok()?;
+                self.check_sep()?;
                 stat.into()
             }
         })
+    }
+
+    fn check_sep(&mut self) -> Res<()> {
+        if !self.curr_tok().kind().is_sep() {
+            return Err(ParseErr::new(
+                self.curr_tok().clone(), // it uses Rc::clone() inside
+                format!("expected `{}`", token::Kind::Separator), // or Eoi
+            ));
+        }
+        self.skip_tok()?;
+        Ok(())
     }
 
     /// it does skip the first token if it is invalid
@@ -158,7 +151,7 @@ impl Parser {
         let f = self.recursive_pratt(paren_l.precedence(), context)?;
         if self.curr_tok().kind() != token::Kind::ParenR {
             return Err(ParseErr::new(
-                self.curr_tok().clone(),
+                self.curr_tok().clone(), // it uses Rc::clone() inside
                 format!("expected `{}`", token::Kind::ParenR),
             ));
         }
@@ -170,18 +163,11 @@ impl Parser {
         self.skip_tok()?;
         if self.curr_tok().kind() == token::Kind::Number {
             let n = self.skip_tok()?.literal().as_ref().parse()?;
-            if self.curr_tok().kind().is_sep() {
-                self.skip_tok()?;
-                Ok(ast::Statement::Delete(n))
-            } else {
-                Err(ParseErr::new(
-                    self.curr_tok().clone(),
-                    format!("expected `{}`", token::Kind::Separator),
-                ))
-            }
+            self.check_sep()?;
+            Ok(ast::Statement::Delete(n))
         } else {
             Err(ParseErr::new(
-                self.curr_tok().clone(),
+                self.curr_tok().clone(), // it uses Rc::clone() inside
                 format!("expected `{}`", token::Kind::Number),
             ))
         }
@@ -196,7 +182,7 @@ impl Parser {
         let tok = self.skip_tok()?;
         let n: usize = tok.literal().parse()?;
         if n < context.inner().len() {
-            Ok(context.inner()[n].formula().as_ref().clone())
+            Ok(context.inner()[n].formula().as_ref().clone()) // it uses Rc::clone() inside
         } else {
             Err(ParseErr::new(
                 tok,

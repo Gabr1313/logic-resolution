@@ -1,6 +1,5 @@
 use crate::ast;
 use crate::context::Context;
-use crate::error::{InternalError, Res};
 use crate::token;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
@@ -99,6 +98,27 @@ impl From<&Context> for SetClauses {
     }
 }
 
+impl From<Vec<SetClauses>> for SetClauses {
+    fn from(clauses: Vec<SetClauses>) -> SetClauses {
+        SetClauses {
+            bt: clauses.into_iter().fold(BTreeMap::new(), |mut acc, x| {
+                acc.extend(x.bt);
+                acc
+            }),
+        }
+    }
+}
+
+impl From<&ast::Formula> for SetClauses {
+    fn from(formula: &ast::Formula) -> SetClauses {
+        let mut c = SetClauses {
+            bt: BTreeMap::new(),
+        };
+        c.append_formula(formula);
+        c
+    }
+}
+
 impl fmt::Display for SetClauses {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = self
@@ -112,24 +132,7 @@ impl fmt::Display for SetClauses {
 }
 
 impl SetClauses {
-    pub fn new(formula: &ast::Formula) -> Res<SetClauses> {
-        let mut c = SetClauses {
-            bt: BTreeMap::new(),
-        };
-        c.append_formula(formula)?;
-        Ok(c)
-    }
-
-    pub fn merge(clauses: Vec<SetClauses>) -> SetClauses {
-        SetClauses {
-            bt: clauses.into_iter().fold(BTreeMap::new(), |mut acc, x| {
-                acc.extend(x.bt);
-                acc
-            }),
-        }
-    }
-
-    fn append_formula(&mut self, formula: &ast::Formula) -> Res<()> {
+    fn append_formula(&mut self, formula: &ast::Formula) {
         // find `or` recursively than call append_to_clause()
         match formula {
             ast::Formula::Binary(x) => {
@@ -137,34 +140,33 @@ impl SetClauses {
                 if operator == token::Kind::Or {
                     let mut bt = Clause::new();
                     // compiler does not evaluate the second expression if the first one is false
-                    if SetClauses::append_atom(&mut bt, left)?
-                        && SetClauses::append_atom(&mut bt, right)?
+                    if SetClauses::append_atom(&mut bt, left)
+                        && SetClauses::append_atom(&mut bt, right)
                     {
                         self.bt.insert(Rc::new(bt), None);
                     }
                 } else {
                     debug_assert!(operator == token::Kind::And);
-                    self.append_formula(left)?;
-                    self.append_formula(right)?;
+                    self.append_formula(left);
+                    self.append_formula(right);
                 }
             }
             ast::Formula::Unary(_) | ast::Formula::Leaf(_) => {
                 let mut bt = Clause::new();
-                if SetClauses::append_atom(&mut bt, formula)? {
+                if SetClauses::append_atom(&mut bt, formula) {
                     self.bt.insert(Rc::new(bt), None);
                 }
             }
         };
-        Ok(())
     }
 
-    fn append_atom(bt: &mut Clause, f: &ast::Formula) -> Res<bool> {
-        Ok(match f {
+    fn append_atom(bt: &mut Clause, f: &ast::Formula) -> bool {
+        match f {
             ast::Formula::Binary(x) => {
                 let (left, operator, right) = x.parts();
                 debug_assert!(operator == token::Kind::Or);
                 // compiler does not evaluate the second expression if the first one is false
-                SetClauses::append_atom(bt, left)? && SetClauses::append_atom(bt, right)?
+                SetClauses::append_atom(bt, left) && SetClauses::append_atom(bt, right)
             }
             ast::Formula::Unary(x) => {
                 debug_assert!(x.operator() == token::Kind::Not);
@@ -179,9 +181,7 @@ impl SetClauses {
                         true
                     }
                 } else {
-                    return Err(InternalError::new(
-                        "this should be a leaf, see ast::Formula::digest()".to_string(),
-                    ));
+                    panic!("this should be a leaf, see ast::Formula::digest()");
                 }
             }
             ast::Formula::Leaf(x) => {
@@ -193,7 +193,7 @@ impl SetClauses {
                     true
                 }
             }
-        })
+        }
     }
 
     fn prune(&mut self) {
@@ -282,7 +282,7 @@ impl SetClauses {
             c1.c.iter()
                 .filter(|x| *x != atom)
                 .chain(c2.c.iter().filter(|x| *x != &opposite))
-                .map(|x| x.clone())
+                .map(|x| x.clone()) // it uses Rc::clone() inside
                 .collect::<BTreeSet<Atom>>()
                 .into();
 

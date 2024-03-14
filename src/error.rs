@@ -58,47 +58,6 @@ impl IndexOutOfBound {
 }
 impl fmt::Display for IndexOutOfBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Index out of bound: {}",
-            self.message
-        )
-    }
-}
-
-#[derive(Debug)]
-pub struct InternalError {
-    message: String,
-}
-impl Error for InternalError {}
-impl InternalError {
-    pub fn new(message: String) -> Box<InternalError> {
-        Box::new(InternalError { message })
-    }
-}
-impl fmt::Display for InternalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Interanl error: {}", self.message)
-    }
-}
-
-#[derive(Debug)]
-pub struct InternalErrorTok {
-    kind: token::Kind,
-    message: String,
-}
-impl Error for InternalErrorTok {}
-impl InternalErrorTok {
-    pub fn new(tok: token::Kind, message: String) -> Box<InternalErrorTok> {
-        Box::new(InternalErrorTok { kind: tok, message })
-    }
-}
-impl fmt::Display for InternalErrorTok {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Interanl error: got=`{:?}` : {}",
-            self.kind, self.message
-        )
+        write!(f, "Index out of bound: {}", self.message)
     }
 }

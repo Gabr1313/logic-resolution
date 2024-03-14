@@ -1,4 +1,4 @@
-use crate::error::{InternalError, InternalErrorTok, Res};
+use crate::error::Res;
 use crate::token;
 use std::fmt;
 use std::rc::Rc;
@@ -127,12 +127,7 @@ impl Formula {
                 let (operator, right) = x.destroy();
                 match operator {
                     token::Kind::Not => right.negate_digest()?,
-                    _ => {
-                        return Err(InternalErrorTok::new(
-                            operator,
-                            "not a valid unary operator".to_string(),
-                        ))
-                    }
+                    _ => panic!("not a valid unary operator"),
                 }
             }
             Formula::Binary(x) => {
@@ -149,9 +144,9 @@ impl Formula {
                     }
                     token::Kind::Equiv => Formula::new_binary(
                         Formula::new_binary(
-                            left.clone().digest()?,
+                            left.clone().digest()?, // i need 2 instances of left
                             token::Kind::And,
-                            right.clone().digest()?,
+                            right.clone().digest()?, // i need 2 instances of right
                         ),
                         token::Kind::Or,
                         Formula::new_binary(
@@ -160,12 +155,7 @@ impl Formula {
                             right.negate_digest()?,
                         ),
                     ),
-                    _ => {
-                        return Err(InternalErrorTok::new(
-                            operator,
-                            "not a valid binary operator".to_string(),
-                        ))
-                    }
+                    _ => panic!("not a valid binary operator"),
                 }
             }
             Formula::Leaf(_) => self,
@@ -178,12 +168,7 @@ impl Formula {
                 let (operator, right) = x.destroy();
                 match operator {
                     token::Kind::Not => right,
-                    _ => {
-                        return Err(InternalErrorTok::new(
-                            token::Kind::Eoi,
-                            "not an unary opertor".to_string(),
-                        ))
-                    }
+                    _ => panic!("not a valid unary operator"),
                 }
             }
             Formula::Binary(x) => {
@@ -210,18 +195,14 @@ impl Formula {
                         right.negate_digest()?,
                     )
                     .digest()?,
-                    _ => {
-                        return Err(InternalErrorTok::new(
-                            token::Kind::Eoi,
-                            "not a binnary opertor".to_string(),
-                        ))
-                    }
+                    _ => panic!("not a valid binary operator"),
                 }
             }
             Formula::Leaf(_) => Formula::new_unary(token::Kind::Not, self),
         })
     }
 
+    // don't call digest before distribute!
     pub fn distribute(self) -> Res<Formula> {
         let formula = self.digest()?;
         formula.distribute_recurse()
@@ -246,17 +227,9 @@ impl Formula {
                         }
                     }
                     token::Kind::Implies | token::Kind::Equiv => {
-                        return Err(InternalErrorTok::new(
-                            operator,
-                            "call self.digest() before".to_string(),
-                        ))
+                        panic!("call self.digest() before")
                     }
-                    _ => {
-                        return Err(InternalErrorTok::new(
-                            operator,
-                            "not a valid binary operator".to_string(),
-                        ))
-                    }
+                    _ => panic!("not a valid binary operator"),
                 }
             }
             Formula::Leaf(_) => self,
@@ -274,15 +247,16 @@ impl Formula {
                 let (a, _, b) = l.destroy();
                 let c = right;
                 Formula::new_binary(
+                    // I need 2 istances of c
                     Formula::new_binary(a, token::Kind::Or, c.clone()).distribute_recurse()?,
                     token::Kind::And,
                     Formula::new_binary(b, token::Kind::Or, c).distribute_recurse()?,
                 )
             } else {
-                return Err(InternalError::new("assert left.is_and()".to_string()));
+                panic!("assert left.is_and()");
             }
         } else {
-            return Err(InternalError::new("assert left.is_and()".to_string()));
+            panic!("assert left.is_and()");
         })
     }
 
@@ -297,15 +271,16 @@ impl Formula {
                 let (a, _, b) = r.destroy();
                 let c = left;
                 Formula::new_binary(
+                    // I need 2 istances of c
                     Formula::new_binary(c.clone(), token::Kind::Or, a).distribute_recurse()?,
                     token::Kind::And,
                     Formula::new_binary(c, token::Kind::Or, b).distribute_recurse()?,
                 )
             } else {
-                return Err(InternalError::new("assert right.is_and()".to_string()));
+                panic!("assert right.is_and()");
             }
         } else {
-            return Err(InternalError::new("assert right.is_and()".to_string()));
+            panic!("assert right.is_and()");
         })
     }
 }

@@ -12,7 +12,7 @@ pub struct InnerContext {
 impl InnerContext {
     fn new(formula: Rc<Formula>) -> Res<InnerContext> {
         let dist = formula.as_ref().clone().distribute()?;
-        let set_clauses = Rc::new(SetClauses::new(&dist)?);
+        let set_clauses = Rc::new((&dist).into());
         Ok(InnerContext {
             formula,
             set_clauses,
