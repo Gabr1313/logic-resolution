@@ -9,7 +9,7 @@ mod test;
 #[derive(Debug)]
 pub struct Lexer {
     buffer: String,
-    ids: HashMap<String, Rc<String>>,
+    ids: HashMap<String, Rc<str>>,
     pos: usize,
     row: usize,
     col: usize,
@@ -141,15 +141,14 @@ impl Lexer {
             Ok(if let Some(rc) = self.ids.get(s) {
                 token::Token::new(tok_kind, Rc::clone(rc), init_row, init_col)
             } else {
-                let s = s.to_string();
-                let rc = Rc::new(s.clone());
+                let rc = s.into();
                 // up to now there are only 2 keyword, so I don't worry that much
                 // an HashMap would be a good alternative
-                match s.as_str() {
+                match s {
                     "exit" => token::Token::new(token::Kind::Exit, rc, init_row, init_col),
                     "help" => token::Token::new(token::Kind::Help, rc, init_row, init_col),
                     _ => {
-                        self.ids.insert(s, Rc::clone(&rc));
+                        self.ids.insert(s.to_string(), Rc::clone(&rc));
                         token::Token::new(tok_kind, rc, init_row, init_col)
                     }
                 }

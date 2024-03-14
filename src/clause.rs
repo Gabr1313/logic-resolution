@@ -12,8 +12,8 @@ mod test;
 #[derive(Hash, Ord, PartialOrd, Clone, Debug)]
 /// Equal is implementented using ptr
 pub enum Atom {
-    Positive(Rc<String>),
-    Negative(Rc<String>),
+    Positive(Rc<str>),
+    Negative(Rc<str>),
 }
 
 impl PartialEq for Atom {
@@ -30,10 +30,10 @@ impl PartialEq for Atom {
 impl Eq for Atom {}
 
 impl Atom {
-    pub fn new_affermative(s: Rc<String>) -> Atom {
+    pub fn new_affermative(s: Rc<str>) -> Atom {
         Atom::Positive(s)
     }
-    pub fn new_negative(s: Rc<String>) -> Atom {
+    pub fn new_negative(s: Rc<str>) -> Atom {
         Atom::Negative(s)
     }
     pub fn opposite(&self) -> Atom {

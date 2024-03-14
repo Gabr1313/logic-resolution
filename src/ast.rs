@@ -42,14 +42,14 @@ impl Binary {
 
 #[derive(Debug, Clone)]
 pub struct Leaf {
-    ident: Rc<String>,
+    ident: Rc<str>,
 }
 
 impl Leaf {
-    pub fn destroy(self) -> Rc<String> {
+    pub fn destroy(self) -> Rc<str> {
         self.ident
     }
-    pub fn string(&self) -> Rc<String> {
+    pub fn string(&self) -> Rc<str> {
         Rc::clone(&self.ident)
     }
 }
@@ -97,7 +97,7 @@ impl fmt::Display for Statement {
 }
 
 impl Formula {
-    pub fn new_leaf(ident: Rc<String>) -> Formula {
+    pub fn new_leaf(ident: Rc<str>) -> Formula {
         Formula::Leaf(Leaf { ident })
     }
     pub fn new_binary(left: Formula, operator: token::Kind, right: Formula) -> Formula {

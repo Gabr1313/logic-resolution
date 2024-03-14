@@ -72,7 +72,7 @@ impl fmt::Display for Kind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
     kind: Kind,
-    literal: Rc<String>,
+    literal: Rc<str>,
     row: usize,
     col: usize,
 }
@@ -84,7 +84,7 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    pub fn new(kind: Kind, literal: Rc<String>, row: usize, col: usize) -> Token {
+    pub fn new(kind: Kind, literal: Rc<str>, row: usize, col: usize) -> Token {
         Token {
             kind,
             literal,
@@ -95,7 +95,7 @@ impl Token {
     pub fn kind(&self) -> Kind {
         self.kind
     }
-    pub fn literal(&self) -> Rc<String> {
+    pub fn literal(&self) -> Rc<str> {
         Rc::clone(&self.literal)
     }
     pub fn row(&self) -> usize {
