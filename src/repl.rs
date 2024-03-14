@@ -9,6 +9,7 @@ use std::io::Read;
 use std::io::{self, Write};
 
 const PROMPT: &str = ">> ";
+const SPACES: &str = " "; // as long as PROMPT
 
 pub fn repl() -> Res<()> {
     let stdin = io::stdin();
@@ -18,7 +19,7 @@ pub fn repl() -> Res<()> {
     print!("{}", PROMPT);
     io::stdout().flush()?;
     for line in stdin.lines() {
-        if eval_print(&mut pars, line?, &mut context)? {
+        if eval_print(&mut pars, line?, &mut context, SPACES)? {
             io::stdout().flush()?; // do i need this here?
             break;
         }
@@ -34,7 +35,7 @@ pub fn rep(filename: &str) -> Res<()> {
     file.read_to_string(&mut buf)?;
     let mut pars = parser::Parser::new()?;
     let mut context = context::Context::new();
-    eval_print(&mut pars, buf, &mut context)?;
+    eval_print(&mut pars, buf, &mut context, "")?;
     Ok(())
 }
 
@@ -43,6 +44,7 @@ fn eval_print(
     pars: &mut parser::Parser,
     line: String,
     context: &mut context::Context,
+    spaces: &str
 ) -> Res<bool> {
     if let Err(err) = pars.load_bytes(line) {
         eprintln!("{}", err);
@@ -51,19 +53,19 @@ fn eval_print(
             match pars.parse_statement_update_context(context) {
                 Ok(Statement::Eoi) => break,
                 Ok(Statement::Exit) => return Ok(true),
-                Ok(Statement::Help) => println!("{}", help::help()),
-                Ok(Statement::Delete(n)) => println!("Formula {n} removed."),
-                Ok(Statement::Query) => println!("{}", context),
+                Ok(Statement::Help) => println!("{spaces}{}", help::help()),
+                Ok(Statement::Delete(n)) => println!("{spaces}Formula {n} removed."),
+                Ok(Statement::Query) => println!("{spaces}{}", context),
                 Ok(Statement::Execute) => {
                     let mut to_solve = SetClauses::from(&*context);
                     if to_solve.find_box() {
-                        println!("Box found:\n{}\n{}", context, to_solve.trace_from_box());
+                        println!("{spaces}Box found:\n{}\n{}", context, to_solve.trace_from_box());
                     } else {
-                        println!("Box not found.");
+                        println!("{spaces}Box not found.");
                     }
                 }
-                Ok(Statement::Formula(formula)) => println!("{}", formula),
-                Err(err) => eprintln!("{}", err),
+                Ok(Statement::Formula(formula)) => println!("{spaces}{}", formula),
+                Err(err) => eprintln!("{spaces}{}", err),
             }
         }
     };
