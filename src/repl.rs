@@ -14,7 +14,7 @@ pub fn repl() -> Res<()> {
     let stdin = io::stdin();
     let mut pars = parser::Parser::new()?;
     let mut context = context::Context::new();
-    println!("Type `help;`");
+    println!("Type `help`");
     print!("{}", PROMPT);
     io::stdout().flush()?;
     for line in stdin.lines() {
