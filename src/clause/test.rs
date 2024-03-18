@@ -1,5 +1,5 @@
 use super::SetClauses;
-use crate::{ast::Statement, context::Context, parser::Parser};
+use crate::{ast::Statement, context::Context, parser::Parser, slice_to_str};
 
 #[test]
 fn test_clauses() {
@@ -197,14 +197,8 @@ fn test_trace_from_box() {
         if *exp != trace {
             panic!(
                 "expected=`{}`\ngot     =`{}`",
-                exp.iter()
-                    .map(|x| x.to_string()) // @todo i could do better
-                    .reduce(|acc, s| format!("{acc}\n{s}"))
-                    .unwrap_or_default(),
-                trace
-                    .into_iter()
-                    .reduce(|acc, s| format!("{acc}\n{s}"))
-                    .unwrap_or_default()
+                slice_to_str(exp, ""),
+                slice_to_str(&trace, ""),
             )
         }
     }

@@ -1,5 +1,5 @@
 use super::Parser;
-use crate::context;
+use crate::{context, slice_to_str};
 
 #[test]
 fn test_parser() {
@@ -102,22 +102,8 @@ x;
 
     for &exp in expected {
         let l = match pars.parse_statement_update_context(&mut context) {
-            Ok(s) => format!(
-                "{s}\n{}",
-                context
-                    .vec_str()
-                    .into_iter()
-                    .reduce(|acc, s| format!("{acc}\n{s}"))
-                    .unwrap_or_default()
-            ),
-            Err(s) => format!(
-                "{s}\n{}",
-                context
-                    .vec_str()
-                    .into_iter()
-                    .reduce(|acc, s| format!("{acc}\n{s}"))
-                    .unwrap_or_default()
-            )
+            Ok(s) => format!("{s}\n{}", slice_to_str(&context.vec_str(), "")),
+            Err(s) => format!("{s}\n{}", slice_to_str(&context.vec_str(), "")),
         };
         if exp != l {
             panic!("expected=`{exp}`\ngot     =`{l}`")

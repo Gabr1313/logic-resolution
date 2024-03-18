@@ -4,6 +4,7 @@ use crate::context;
 use crate::error::Res;
 use crate::help;
 use crate::parser;
+use crate::slice_to_str;
 use std::fs::File;
 use std::io::Read;
 use std::io::{self, Write};
@@ -55,34 +56,13 @@ fn eval_print(
                 Ok(Statement::Exit) => return Ok(true),
                 Ok(Statement::Help) => println!("{spaces}{}", help::help()),
                 Ok(Statement::Delete(n)) => println!("{spaces}Formula {n} removed."),
-                Ok(Statement::Query) => println!(
-                    "{spaces}{}",
-                    context
-                        .vec_str()
-                        .into_iter()
-                        .reduce(|acc, s| format!("{acc}\n{spaces}{s}"))
-                        .unwrap_or_default()
-                ),
+                Ok(Statement::Query) => println!("{}", slice_to_str(&context.vec_str(), spaces)),
                 Ok(Statement::Execute) => {
                     let mut to_solve = SetClauses::from(&*context);
                     if to_solve.find_box() {
                         println!("{spaces}Box found:");
-                        println!(
-                            "{spaces}{}",
-                            context
-                                .vec_str()
-                                .into_iter()
-                                .reduce(|acc, s| format!("{acc}\n{spaces}{s}"))
-                                .unwrap_or_default()
-                        );
-                        println!(
-                            "{spaces}{}",
-                            to_solve
-                                .trace_from_box()
-                                .into_iter()
-                                .reduce(|acc, s| format!("{acc}\n{spaces}{s}"))
-                                .unwrap_or_default()
-                        );
+                        println!("{}", slice_to_str(&context.vec_str(), spaces));
+                        println!("{}", slice_to_str(&to_solve.trace_from_box(), spaces));
                     } else {
                         println!("{spaces}Box not found.");
                     }
