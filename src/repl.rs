@@ -5,8 +5,7 @@ use crate::error::Res;
 use crate::help;
 use crate::parser;
 use crate::slice_to_str;
-use std::fs::File;
-use std::io::Read;
+use std::fs::File; use std::io::Read;
 use std::io::{self, Write};
 
 const PROMPT: &str = ">> ";
@@ -16,7 +15,7 @@ pub fn repl() -> Res<()> {
     let stdin = io::stdin();
     let mut pars = parser::Parser::new()?;
     let mut context = context::Context::new();
-    println!("{spaces}Type `help`");
+    println!("{SPACES}Type `help`");
     print!("{}", PROMPT);
     io::stdout().flush()?;
     for line in stdin.lines() {
