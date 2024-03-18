@@ -9,7 +9,7 @@ use std::io::Read;
 use std::io::{self, Write};
 
 const PROMPT: &str = ">> ";
-const SPACES: &str = " "; // as long as PROMPT
+pub const SPACES: &str = " ";
 
 pub fn repl() -> Res<()> {
     let stdin = io::stdin();
@@ -44,7 +44,7 @@ fn eval_print(
     pars: &mut parser::Parser,
     line: String,
     context: &mut context::Context,
-    spaces: &str
+    spaces: &str,
 ) -> Res<bool> {
     if let Err(err) = pars.load_bytes(line) {
         eprintln!("{}", err);
@@ -55,11 +55,34 @@ fn eval_print(
                 Ok(Statement::Exit) => return Ok(true),
                 Ok(Statement::Help) => println!("{spaces}{}", help::help()),
                 Ok(Statement::Delete(n)) => println!("{spaces}Formula {n} removed."),
-                Ok(Statement::Query) => println!("{spaces}{}", context),
+                Ok(Statement::Query) => println!(
+                    "{spaces}{}",
+                    context
+                        .vec_str()
+                        .into_iter()
+                        .reduce(|acc, s| format!("{acc}\n{spaces}{s}"))
+                        .unwrap_or_default()
+                ),
                 Ok(Statement::Execute) => {
                     let mut to_solve = SetClauses::from(&*context);
                     if to_solve.find_box() {
-                        println!("{spaces}Box found:\n{}\n{}", context, to_solve.trace_from_box());
+                        println!("{spaces}Box found:");
+                        println!(
+                            "{spaces}{}",
+                            context
+                                .vec_str()
+                                .into_iter()
+                                .reduce(|acc, s| format!("{acc}\n{spaces}{s}"))
+                                .unwrap_or_default()
+                        );
+                        println!(
+                            "{spaces}{}",
+                            to_solve
+                                .trace_from_box()
+                                .into_iter()
+                                .reduce(|acc, s| format!("{acc}\n{spaces}{s}"))
+                                .unwrap_or_default()
+                        );
                     } else {
                         println!("{spaces}Box not found.");
                     }

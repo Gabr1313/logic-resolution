@@ -1,7 +1,6 @@
 use crate::ast::Formula;
 use crate::clause::SetClauses;
 use crate::error::{IndexOutOfBound, Res};
-use std::fmt::{self, Display};
 use std::rc::Rc;
 
 pub struct InnerContext {
@@ -30,25 +29,6 @@ pub struct Context {
     inner: Vec<InnerContext>,
 }
 
-impl Display for Context {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = self
-            .inner
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                format!(
-                    "{i}: {} -> {}",
-                    f.formula.as_ref(),
-                    f.set_clauses().as_ref()
-                )
-            })
-            .reduce(|acc, s| format!("{acc}\n{s}"))
-            .unwrap_or_default();
-        write!(f, "{}", s)
-    }
-}
-
 impl Context {
     pub fn new() -> Context {
         Context { inner: Vec::new() }
@@ -70,5 +50,18 @@ impl Context {
     }
     pub fn inner(&self) -> &Vec<InnerContext> {
         &self.inner
+    }
+    pub fn vec_str(&self) -> Vec<String> {
+        self.inner
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                format!(
+                    "{i}: {} -> {}",
+                    f.formula.as_ref(),
+                    f.set_clauses().as_ref()
+                )
+            })
+            .collect()
     }
 }

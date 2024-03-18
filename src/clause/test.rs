@@ -150,22 +150,23 @@ fn test_find_box() {
 #[test]
 fn test_trace_from_box() {
     let tests = &[
-        ("a;", ""),
-        ("a;~a", "{~a}, {a} -> {}"),
+        ("a;", vec![]),
+        ("a;~a", vec!["{~a}, {a} -> {}"]),
         (
             "(~B|C) & ~(A&~B) & (A|(B|C)&~C); ~(A&B&C);",
-            "{B, ~A}, {~A, ~B, ~C} -> {~A, ~C}
-{C, ~B}, {B, ~A} -> {C, ~A}
-{~A, ~C}, {C, ~A} -> {~A}
-{C, ~B}, {A, B, C} -> {A, C}
-{A, ~C}, {A, C} -> {A}
-{~A}, {A} -> {}",
+            vec![
+                "{B, ~A}, {~A, ~B, ~C} -> {~A, ~C}",
+                "{C, ~B}, {B, ~A} -> {C, ~A}",
+                "{~A, ~C}, {C, ~A} -> {~A}",
+                "{C, ~B}, {A, B, C} -> {A, C}",
+                "{A, ~C}, {A, C} -> {A}",
+                "{~A}, {A} -> {}",
+            ],
         ),
-        ("(~(B&C)) & (A=>(C<=>B)) & (~C=>A) & (~B|(A=>~C));", ""),
+        ("(~(B&C)) & (A=>(C<=>B)) & (~C=>A) & (~B|(A=>~C));", vec![]),
         (
             "a; a <=> b; 0 & ~1;",
-            "{~a, ~b}, {b, ~a} -> {~a}
-{~a}, {a} -> {}",
+            vec!["{~a, ~b}, {b, ~a} -> {~a}", "{~a}, {a} -> {}"],
         ),
     ];
 
@@ -193,8 +194,18 @@ fn test_trace_from_box() {
         let mut t: SetClauses = v.into();
         t.find_box();
         let trace = t.trace_from_box();
-        if *exp != &trace {
-            panic!("expected=`{exp}`\ngot     =`{}`", trace)
+        if *exp != trace {
+            panic!(
+                "expected=`{}`\ngot     =`{}`",
+                exp.iter()
+                    .map(|x| x.to_string()) // @todo i could do better
+                    .reduce(|acc, s| format!("{acc}\n{s}"))
+                    .unwrap_or_default(),
+                trace
+                    .into_iter()
+                    .reduce(|acc, s| format!("{acc}\n{s}"))
+                    .unwrap_or_default()
+            )
         }
     }
 }

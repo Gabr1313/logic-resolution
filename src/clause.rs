@@ -297,14 +297,7 @@ impl SetClauses {
         len == 0
     }
 
-    pub fn trace_from_box(&self) -> String {
-        self.trace_from_box_vec()
-            .into_iter()
-            .reduce(|acc, s| format!("{acc}\n{s}"))
-            .unwrap_or_default()
-    }
-
-    fn trace_from_box_vec(&self) -> Vec<String> {
+    pub fn trace_from_box(&self) -> Vec<String> {
         let mut trace = vec![];
         let empty = Rc::new(Clause::new());
         if !self.bt.contains_key(&empty) {
