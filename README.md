@@ -1,4 +1,4 @@
-# Resolutor for Propositional Calculus
+# Solver for Propositional Calculus
 The program functions as a REPL (Read-Eval-Print Loop) designed to determine
 whether a given set of clauses is contradictory.  
 It implements the resolution method for mathematical logics and displays the
@@ -28,7 +28,7 @@ There are some special operators and keywords:
 The program can be called followed by an input file.
 ```
 
-### Example
+## Example
 ```
 >> ~(A&B&C)
 (~((A & B) & C))
