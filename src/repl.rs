@@ -59,6 +59,7 @@ fn eval_print(
                     if to_solve.find_box() {
                         println!("Box found:");
                         println!("{}", slice_to_str(&context.vec_str()));
+                        println!("Proof:");
                         println!("{}", slice_to_str(&to_solve.trace_from_box()));
                     } else {
                         println!("Box not found.");
