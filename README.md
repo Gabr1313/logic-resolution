@@ -30,6 +30,8 @@ The program can be called followed by an input file.
 
 ## Example
 ```
+$ cargo run -r
+...
 >> ~(A&B&C)
 (~((A & B) & C))
 >> A|(B|C)&~C
