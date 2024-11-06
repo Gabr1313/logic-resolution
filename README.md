@@ -1,7 +1,7 @@
 # Solver for Propositional Calculus
 The program functions as a REPL (Read-Eval-Print Loop) designed to determine
 whether a given set of clauses is contradictory.  
-It implements the resolution method for mathematical logics and displays the
+It implements the resolution method for mathematical logic and displays the
 step-by-step process used to discover the contraddiction.
 
 ## Syntax
