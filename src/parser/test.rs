@@ -102,8 +102,8 @@ x;
 
     for &exp in expected {
         let l = match pars.parse_statement_update_context(&mut context) {
-            Ok(s) => format!("{s}\n{}", slice_to_str(&context.vec_str(), "")),
-            Err(s) => format!("{s}\n{}", slice_to_str(&context.vec_str(), "")),
+            Ok(s) => format!("{s}\n{}", slice_to_str(&context.vec_str())),
+            Err(s) => format!("{s}\n{}", slice_to_str(&context.vec_str())),
         };
         if exp != l {
             panic!("expected=`{exp}`\ngot     =`{l}`")

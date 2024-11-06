@@ -144,7 +144,7 @@ fn test_find_box() {
         if *exp != t.find_box() {
             panic!("expected=`{exp}`\ngot     =`{}`", !exp)
         }
-    }
+    
 }
 
 #[test]
@@ -197,8 +197,8 @@ fn test_trace_from_box() {
         if *exp != trace {
             panic!(
                 "expected=`{}`\ngot     =`{}`",
-                slice_to_str(exp, ""),
-                slice_to_str(&trace, ""),
+                slice_to_str(exp),
+                slice_to_str(&trace),
             )
         }
     }

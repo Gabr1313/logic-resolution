@@ -3,55 +3,57 @@ The program functions as a REPL (Read-Eval-Print Loop) designed to determine
 whether a given set of clauses is contradictory.  
 It implements the resolution method for mathematical logics and displays the
 step-by-step process used to discover the contraddiction.
+
 ## Syntax
-A `formula` is written using the following symbols (ordered by priority):
-- `~` is a `not`
-- `&` is an `and`
-- `|` is an `or`
-- `=>` is an `imply`
-- `<=>` is an `if and only if`
-In the REPL you can:
-- Insert a formula: type it. It will be displayed how the formula is recognized
-  by the system.  
-  Example: `a <=> ~b`
-- If perhaps you would like to insert more than one formula on the same line
-  use `;`.  
-  Example: `a <=> b; c`
-- Print informations about inserted formulae: type `?`.  
-  Example: `?`
-- Combine formulae: you can alias formulae with the number they are associated 
-  with.  
-  Example: `1 & d | ~e`
-- Remove a formula: type `-x` to remove the formula number x.  
-  Example: `-2`
-- Try to find box (a contraddiction): type `!`. If it is found, a backtrace
-  will be displayed.  
-  Example: `!`
+```
+Identifiers begins with letter or `_` and can also contain digits.
+A formula can be inserted using the following operators:
+    `~a`       -> "not a"
+    `a & b`    -> "a and b"
+    `a | b`    -> "a or b"
+    `a => b`   -> "a then b"
+    `a <=> b`  -> "a if and only if b"
+    `a & (b <=> c)`
+The `;` is optional:
+    `~a; a & b` are 2 formulas
+The precedences of the operators are in decreasing order:
+    `!` `&` `|` `=>` `<=>`
+There exists some special operators and keywords:
+    `!`        -> "find box"
+    `?`        -> "print formulas currently in use (numbered in order or insertion)"
+    `-1`       -> "delete formula_1"
+    `0 <=> ~1` -> "formula_0 if and only if not formula_1"
+    `exit`     -> "exit the program"
+    `help`     -> "print this menu"
+The program can be called followed by an input file.
+```
 
 ### Example
 ```
-❯ cargo run -r
-...
 >> ~(A&B&C)
- (~((A & B) & C))
+(~((A & B) & C))
 >> A|(B|C)&~C
- (A | ((B | C) & (~C)))
+(A | ((B | C) & (~C)))
 >> ?
- 0: (~((A & B) & C)) -> {{~A, ~B, ~C}}
- 1: (A | ((B | C) & (~C))) -> {{A, B, C}, {A, ~C}}
->> (~B|C) & ~(A&~B) & 1
- ((((~B) | C) & (~(A & (~B)))) & (A | ((B | C) & (~C))))
+0: (~((A & B) & C)) -->
+{{~A, ~B, ~C}}
+1: (A | ((B | C) & (~C))) -->
+{{A, B, C}, {A, ~C}}
+>> 1 & (~B|C) & ~(A&~B)
+(((A | ((B | C) & (~C))) & ((~B) | C)) & (~(A & (~B))))
 >> -1
- Formula 1 removed.
+Formula 1 removed.
 >> !
- Box found:
- 0: (~((A & B) & C)) -> {{~A, ~B, ~C}}
- 1: ((((~B) | C) & (~(A & (~B)))) & (A | ((B | C) & (~C)))) -> {{A, B, C}, {A, ~C}, {B, ~A}, {C, ~B}}
- {B, ~A}, {~A, ~B, ~C} -> {~A, ~C}
- {C, ~B}, {B, ~A} -> {C, ~A}
- {~A, ~C}, {C, ~A} -> {~A}
- {C, ~B}, {A, B, C} -> {A, C}
- {A, ~C}, {A, C} -> {A}
- {~A}, {A} -> {}
+Box found:
+0: (~((A & B) & C)) -->
+{{~A, ~B, ~C}}
+1: (((A | ((B | C) & (~C))) & ((~B) | C)) & (~(A & (~B)))) -->
+{{A, B, C}, {A, ~C}, {B, ~A}, {C, ~B}}
+{B, ~A}, {~A, ~B, ~C} -> {~A, ~C}
+{C, ~B}, {B, ~A} -> {C, ~A}
+{~A, ~C}, {C, ~A} -> {~A}
+{C, ~B}, {A, B, C} -> {A, C}
+{A, ~C}, {A, C} -> {A}
+{~A}, {A} -> {}
 >> exit
 ```

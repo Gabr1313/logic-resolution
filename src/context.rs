@@ -57,7 +57,7 @@ impl Context {
             .enumerate()
             .map(|(i, f)| {
                 format!(
-                    "{i}: {} -> {}",
+                    "{i}: {} -->\n{}",
                     f.formula.as_ref(),
                     f.set_clauses().as_ref()
                 )
